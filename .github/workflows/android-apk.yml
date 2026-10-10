@@ -1,7 +1,9 @@
 name: Compilar APK Android
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, "feature/**", "fix/**"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   apk:

@@ -6,8 +6,8 @@ android {
         applicationId 'br.com.cidadeviva.game'
         minSdk 23
         targetSdk 35
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 2
+        versionName '0.1.1'
     }
     sourceSets { main { jniLibs.srcDirs = ['libs'] } }
     buildTypes {
@@ -51,4 +51,7 @@ tasks.named('preBuild').configure { dependsOn('copyAndroidNatives') }
 
 // libGDX Android 1.14.2 transitively resolves AndroidX Core 1.17 (requires SDK 36).
 // Keep compileSdk 35 / AGP 8.7.3 compatible for Android APK debug builds.
+configurations.configureEach { resolutionStrategy.force("androidx.core:core:1.16.0") }
+
+// Keep compileSdk 35 / AGP 8.7.3: AndroidX Core 1.17 requires SDK 36.
 configurations.configureEach { resolutionStrategy.force("androidx.core:core:1.16.0") }

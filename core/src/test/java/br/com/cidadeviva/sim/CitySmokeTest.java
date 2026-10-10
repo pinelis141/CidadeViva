@@ -16,9 +16,17 @@ public final class CitySmokeTest {
         verify(city.build(0,31,TileType.ROAD).equals("Não pode construir na água") ||
             city.tile(0,31).type != TileType.WATER,"sem ruas sobre a água");
         // Construir e remover fora do centro sem tocar em construções existentes.
-        city.build(20,20,TileType.ROAD);
+        int beforeBuild=city.money();
+        verify(city.build(20,20,TileType.ROAD).equals("Construído"),"rua válida");
+        verify(city.money()==beforeBuild-20,"cobra custo da rua");
         verify(city.tile(20,20).type==TileType.ROAD,"rua construída");
+        int paid=city.money();
         verify(city.build(20,20,TileType.ROAD).equals("Já construído"),"bloqueia custo duplicado");
+        verify(city.money()==paid,"sem cobrar por operação duplicada");
+        verify(city.build(-1,0,TileType.ROAD).equals("Fora do mapa"),"impede fora do mapa");
+        verify(city.build(48,2,TileType.ROAD).equals("Fora do mapa"),"impede maior que mapa");
+        verify(city.build(20,20,TileType.COMMERCIAL).equals("Remova a estrutura antes"),"bloqueia construção sobre rua");
+        verify(city.build(0,47,TileType.WATER).equals("Construção inválida"),"tipo proibido");
         verify(city.build(20,20,TileType.GRASS).equals("Terreno liberado"),"remover rua");
         int oldDay=city.day();
         city.nextDay();
@@ -30,6 +38,6 @@ public final class CitySmokeTest {
         verify(city.day()==loaded.day(),"dia salva");
         verify(city.residents()==loaded.residents(),"mapa salva");
         verify(city.tile(20,20).type==loaded.tile(20,20).type,"demolição persiste");
-        System.out.println("OK: 10 verificações básicas de construção, economia e salvamento.");
+        System.out.println("OK: verificações básicas de construção, economia e salvamento.");
     }
 }

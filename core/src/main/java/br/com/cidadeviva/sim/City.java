@@ -110,7 +110,7 @@ public final class City {
         day++;
         int employed = Math.min(residents(), jobs());
         lastIncome = Math.max(0, residents() / 5) + employed / 4 + zones() * 2 - roads();
-        money += lastIncome;
+        money = Math.max(0, money + lastIncome); // Evita saldo negativo incompatível com o formato de save.
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++) {
             Tile t = tiles[x][y];
             if (!t.type.isZone() || !hasRoad(x,y)) continue;
