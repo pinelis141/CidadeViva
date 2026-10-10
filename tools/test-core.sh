@@ -14,4 +14,5 @@ java -cp "$DIR" br.com.cidadeviva.sim.CitySmokeTest
 java -cp "$DIR" br.com.cidadeviva.input.ControlsMathTest
 java -cp "$DIR" br.com.cidadeviva.input.BuildStrokeTest
 java -cp "$DIR" br.com.cidadeviva.sim.CityAreaTest
+java -cp "$DIR" br.com.cidadeviva.sim.CityRoadAccessTest
 java -cp "$DIR" br.com.cidadeviva.storage.CitySaveStoreTest

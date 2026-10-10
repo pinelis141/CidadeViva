@@ -18,6 +18,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import br.com.cidadeviva.render.PixelArtAtlas;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
@@ -48,6 +49,7 @@ public final class CityGame extends ApplicationAdapter {
     private OrthographicCamera camera;
     private ShapeRenderer shapes;
     private SpriteBatch batch;
+    private PixelArtAtlas pixelArt;
     private BitmapFont font;
     private GlyphLayout glyph;
     private Matrix4 uiProjection;
@@ -96,6 +98,7 @@ public final class CityGame extends ApplicationAdapter {
         camera = new OrthographicCamera();
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
+        pixelArt = new PixelArtAtlas();
         font = new BitmapFont();
         glyph = new GlyphLayout();
         uiProjection = new Matrix4();
@@ -133,12 +136,60 @@ public final class CityGame extends ApplicationAdapter {
         shapes.setProjectionMatrix(camera.combined);
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
+        // Pixel atlas is rendered in isometric painter order, with a small overlay pass.
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        drawMapSprites();
+        batch.end();
+        shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        drawMap();
+        drawRoadAccessWarnings();
         drawBuildPreview();
         shapes.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
         drawHud();
+    }
+
+    /** One texture atlas, nearest-neighbor, no per-frame texture allocations. */
+    private void drawMapSprites() {
+        for (int sum=0;sum<=City.WIDTH+City.HEIGHT-2;sum++) {
+            for (int x=Math.max(0,sum-City.HEIGHT+1);x<=Math.min(City.WIDTH-1,sum);x++) {
+                int y=sum-x;
+                float sx=(x-y)*HALF_W, sy=-(x+y)*HALF_H;
+                if (sx+HALF_W < camera.position.x-w*camera.zoom/2f-76 ||
+                    sx-HALF_W > camera.position.x+w*camera.zoom/2f+76 ||
+                    sy < camera.position.y-h*camera.zoom/2f-138 ||
+                    sy > camera.position.y+h*camera.zoom/2f+76) continue;
+                Tile t=city.tile(x,y);
+                int id=PixelArtAtlas.tileSprite(t.type,city.roadMask(x,y),x,y);
+                pixelArt.draw(batch,id,sx,sy);
+                if (t.type==TileType.FOREST) pixelArt.draw(batch,PixelArtAtlas.treeSprite(x,y),sx,sy);
+                if (t.type.isZone() && t.level>0)
+                    pixelArt.draw(batch,PixelArtAtlas.buildingSprite(t.type,t.level,x,y),sx,sy);
+            }
+        }
+    }
+
+    /** Amber markers identify zoned lots that cannot yet grow without an adjacent road. */
+    private void drawRoadAccessWarnings() {
+        for (int x=0;x<City.WIDTH;x++) for(int y=0;y<City.HEIGHT;y++) {
+            Tile t=city.tile(x,y);
+            if (!t.type.isZone() || city.hasRoad(x,y)) continue;
+            float sx=(x-y)*HALF_W, sy=-(x+y)*HALF_H;
+            if (sx+HALF_W<camera.position.x-w*camera.zoom/2f-45 ||
+                sx-HALF_W>camera.position.x+w*camera.zoom/2f+45 ||
+                sy<camera.position.y-h*camera.zoom/2f-45 ||
+                sy>camera.position.y+h*camera.zoom/2f+45) continue;
+            shapes.setColor(rgb(251,177,86));
+            thinDiamond(sx,sy,26,13);
+            shapes.rect(sx-1,sy+2,2,6);
+            shapes.rect(sx-1,sy-4,2,2);
+        }
+        if (hoverX>=0 && hoverY>=0) {
+            float sx=(hoverX-hoverY)*HALF_W,sy=-(hoverX+hoverY)*HALF_H;
+            shapes.setColor(rgb(255,225,124));
+            thinDiamond(sx,sy,30,15);
+        }
     }
 
     private void drawMap() {
@@ -267,6 +318,31 @@ public final class CityGame extends ApplicationAdapter {
         }
     }
 
+    /** Compact, original high-contrast tool pictograms rendered on a fixed grid. */
+    private void drawToolIcon(int type,float cx,float cy,float u) {
+        float z=u;
+        shapes.setColor(toolColors[type]);
+        if (type==0) { // asphalt stripe
+            shapes.rect(cx-15*z,cy-12*z,30*z,24*z);
+            shapes.setColor(rgb(246,222,142));
+            shapes.rect(cx-3*z,cy-1*z,6*z,2*z);
+            shapes.rect(cx-3*z,cy+6*z,6*z,2*z);
+        } else if (type==4) { // demolition crossed tools
+            shapes.rectLine(cx-12*z,cy-11*z,cx+12*z,cy+11*z,4*z);
+            shapes.rectLine(cx+12*z,cy-11*z,cx-12*z,cy+11*z,4*z);
+        } else {
+            Color tone=toolColors[type];
+            shapes.setColor(tone);
+            shapes.rect(cx-12*z,cy-11*z,24*z,19*z);
+            if (type==1) shapes.triangle(cx-16*z,cy+8*z,cx+16*z,cy+8*z,cx,cy+19*z);
+            if (type==2) { shapes.setColor(rgb(233,211,133));shapes.rect(cx-15*z,cy+5*z,30*z,5*z); }
+            if (type==3) { shapes.rect(cx+7*z,cy+7*z,7*z,14*z); }
+            shapes.setColor(rgb(26,53,68));
+            shapes.rect(cx-6*z,cy-2*z,5*z,8*z);
+            shapes.rect(cx+4*z,cy-2*z,5*z,8*z);
+        }
+    }
+
     private void drawHud() {
         float u = uiScale;
         float top = HudLayout.TOP_HEIGHT*u;
@@ -289,11 +365,10 @@ public final class CityGame extends ApplicationAdapter {
             float bw=buttonWidth-8*u;
             boolean active=selected==tools[i];
             shapes.setColor(active?rgb(235,215,144):rgb(53,69,78));
-            shapes.rect(bx,14*u,bw,60*u);
-            shapes.setColor(active?rgb(67,75,75):rgb(36,47,55));
-            shapes.rect(bx+2*u,16*u,bw-4*u,56*u);
-            shapes.setColor(toolColors[i]);
-            shapes.rect(bx+bw/2f-9*u,43*u,18*u,16*u);
+            shapes.rect(bx,15*u,bw,88*u);
+            shapes.setColor(active?rgb(59,77,74):rgb(34,47,55));
+            shapes.rect(bx+2*u,17*u,bw-4*u,84*u);
+            drawToolIcon(i,bx+bw*0.5f,75*u,u);
         }
         for (int i=0;i<HudLayout.ACTIONS;i++) {
             float bx=i*w/HudLayout.ACTIONS+3*u;
@@ -313,28 +388,33 @@ public final class CityGame extends ApplicationAdapter {
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         font.setColor(rgb(235,243,227));
-        font.getData().setScale(1.16f*u);
-        font.draw(batch,"CIDADE VIVA  0.2.0a1",12*u,h-18*u);
-        font.getData().setScale(1.01f*u);
-        font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-41*u);
-        font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-62*u);
+        font.getData().setScale(1.20f*u);
+        font.draw(batch,"CIDADE VIVA  0.2.0a2",12*u,h-19*u);
+        font.getData().setScale(1.10f*u);
+        font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
+        font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);
+        int unserved=city.unservedZones();
+        font.setColor(unserved>0?rgb(253,190,114):rgb(152,220,168));
+        font.getData().setScale(1.05f*u);
+        font.draw(batch,unserved>0?"ZONAS SEM RUA: "+unserved+"  |  Toque no lote":"ZONAS COM ACESSO A RUA",12*u,h-89*u);
+        font.setColor(rgb(235,243,227));
         font.setColor(rgb(243,226,158));
         font.getData().setScale(0.90f*u);
         glyph.setText(font,"CENTRAR");
         font.draw(batch,"CENTRAR",w-glyph.width-10*u,h-18*u);
-        font.getData().setScale(0.96f*u);
+        font.getData().setScale(1.12f*u);
         for (int i=0;i<HudLayout.ACTIONS;i++) {
             String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):
                 i==2?(paintMode?"PINTAR":"MOVER"):ACTION_LABELS[i];
             glyph.setText(font,text);
             float bw=w/HudLayout.ACTIONS;
-            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,h-99*u);
+            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,h-136*u);
         }
-        font.getData().setScale(1.02f*u);
+        font.getData().setScale(1.22f*u);
         for (int i=0;i<HudLayout.TOOLS;i++) {
             glyph.setText(font,toolNames[i]);
             float bw=w/HudLayout.TOOLS;
-            font.draw(batch,toolNames[i],i*bw+(bw-glyph.width)*0.5f,27*u);
+            font.draw(batch,toolNames[i],i*bw+(bw-glyph.width)*0.5f,39*u);
         }
         if (!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
             City.BuildResult preview=city.preview(new ArrayList<>(brushCells),selected);
@@ -395,7 +475,7 @@ public final class CityGame extends ApplicationAdapter {
 
     @Override public void dispose() {
         save(false);
-        shapes.dispose();batch.dispose();font.dispose();
+        shapes.dispose();batch.dispose();font.dispose();pixelArt.dispose();
     }
 
     private void clampCamera() {
@@ -437,7 +517,17 @@ public final class CityGame extends ApplicationAdapter {
         int[] index=IsoGrid.pick(scratch.x,scratch.y,HALF_W,HALF_H);
         int x=index[0],y=index[1];
         if (!city.inBounds(x,y)) {message("Fora do mapa");return;}
-        message(city.build(x,y,selected));
+        // Tapping an already-zoned lot inspects access rather than saying merely "already built".
+        Tile existing=city.tile(x,y);
+        if (existing.type.isZone() && selected!=TileType.GRASS &&
+            !city.canBuild(x,y,selected)) {
+            message(city.zoneDescription(x,y));
+        } else {
+            String result=city.build(x,y,selected);
+            if (selected.isZone() && !city.hasRoad(x,y) && city.tile(x,y).type==selected)
+                result="Zona criada. SEM RUA ADJACENTE!";
+            message(result);
+        }
         hoverX=x;hoverY=y;
     }
 
@@ -473,7 +563,10 @@ public final class CityGame extends ApplicationAdapter {
     private void finishStroke(int screenX,int screenY) {
         strokeTo(screenX,screenY);
         City.BuildResult result=city.buildArea(new ArrayList<>(brushCells),selected);
-        message(result.feedback());
+        String response=result.feedback();
+        if (selected.isZone() && !result.insufficientFunds && result.built>0 &&
+            city.unservedZones()>0) response+=" | SEM RUA: "+city.unservedZones();
+        message(response);
         brushCells.clear();
         brushGesture=false;
         hoverX=-1;hoverY=-1;

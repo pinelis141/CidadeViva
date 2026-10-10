@@ -1,5 +1,7 @@
 # Cidade Viva — Java / libGDX / Android
 
+**Versão de testes: 0.2.0-alpha2** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.
+
 City builder isométrico original, offline. **Não utiliza Godot.** O repositório do Pixel Chess é separado e não deve ser modificado por este projeto.
 
 ## 0.2.0-alpha1 — construção em área (prévia funcional)
@@ -41,3 +43,14 @@ gradle :android:assembleDebug
 ```
 
 O APK debug é para testes e não pode ser distribuído como release da Play Store sem assinatura release. Confira [QA-ANDROID-0.2.0-alpha1.md](QA-ANDROID-0.2.0-alpha1.md) para o teste manual.
+
+## Atualizações da 0.2.0-alpha2
+
+- **45 sprites isométricos originais** em atlas PNG 576 × 768; 16 combinações de vias, três categorias de edifícios × três níveis × duas variações; água, vegetação e terrenos variáveis.
+- Renderização com `SpriteBatch` e textura `Nearest`, usando um atlas carregado apenas uma vez; regras da cidade continuam livres de libGDX.
+- HUD superior ampliado para exibir `ZONAS SEM RUA`; barra inferior com rótulos altos, ícones diferenciados e áreas clicáveis revisadas.
+- Zonas sem rua adjacente são destacadas em âmbar; tocar um terreno zoneado mostra tipo, nível e acesso.
+- Testes Java adicionais verificam a contagem de zonas sem estrada, mudança de status, persistência e que um lote sem acesso permanece sem edifício.
+- **Documentação:** [`ART-DIRECTION.md`](ART-DIRECTION.md) e [`QA-ANDROID-0.2.0-alpha2.md`](QA-ANDROID-0.2.0-alpha2.md).
+
+A versão de teste mantém **package separado** (`br.com.cidadeviva.game.dev`) e assinatura **apenas de desenvolvimento**, para preservar o app antigo. Não usar chave DEV para publicação. A arte ainda será ampliada e refinada antes do lançamento.

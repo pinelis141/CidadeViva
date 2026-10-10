@@ -6,10 +6,10 @@ android {
         applicationId 'br.com.cidadeviva.game'
         minSdk 23
         targetSdk 35
-        versionCode 3
-        versionName '0.2.0-alpha1'
+        versionCode 4
+        versionName '0.2.0-alpha2'
     }
-    sourceSets { main { jniLibs.srcDirs = ['libs'] } }
+    sourceSets { main { jniLibs.srcDirs = ['libs']; assets.srcDirs = ['assets'] } }
     signingConfigs {
         // Public DEV-ONLY key: debug package is distinct from the release app.
         // Never use this key or package identity for production builds.
@@ -67,5 +67,3 @@ tasks.named('preBuild').configure { dependsOn('copyAndroidNatives') }
 // Keep compileSdk 35 / AGP 8.7.3 compatible for Android APK debug builds.
 configurations.configureEach { resolutionStrategy.force("androidx.core:core:1.16.0") }
 
-// Keep compileSdk 35 / AGP 8.7.3: AndroidX Core 1.17 requires SDK 36.
-configurations.configureEach { resolutionStrategy.force("androidx.core:core:1.16.0") }

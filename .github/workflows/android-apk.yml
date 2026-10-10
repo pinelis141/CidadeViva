@@ -25,10 +25,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Verificar atlas original
+        run: python3 tools/verify_atlas.py
       - name: Testar lógica Java
         run: bash ./tools/test-core.sh
       - name: Compilar APK de teste
         run: gradle :android:assembleDebug --no-daemon --stacktrace
+      - name: Confirmar atlas incluido no APK
+        run: |
+          unzip -l android/build/outputs/apk/debug/*.apk | grep -F 'assets/city/atlas.png'
+      - name: Confirmar identidade do app de testes
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/build/outputs/apk/debug/*.apk | grep "package: name='br.com.cidadeviva.game.dev'"
       - uses: actions/upload-artifact@v4
         with:
           name: CidadeViva-Android-debug
