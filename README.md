@@ -1,6 +1,6 @@
 # Cidade Viva — Java / libGDX / Android
 
-**Versão de testes: 0.2.0-alpha3** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.
+**Versão de testes: 0.2.0-alpha4** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.
 
 City builder isométrico original, offline. **Não utiliza Godot.** O repositório do Pixel Chess é separado e não deve ser modificado por este projeto.
 
@@ -74,3 +74,16 @@ A versão de teste mantém **package separado** (`br.com.cidadeviva.game.dev`) e
    falta menu seguro para abrir outro slot; não é necessário apagar dados do app.
 5. Testes lógicos: `bash tools/test-core.sh`; verificar arte:
    `python3 tools/verify_atlas.py`; compilar via GitHub Actions.
+
+## Alpha 4 — Minhas Cidades e novos mapas sem perda de progresso
+
+- O botão **CIDADES**, na barra superior, abre o gerenciador de três espaços independentes.
+- **Cidade 1** utiliza o arquivo antigo `cidade-viva/salvamento.cvt`, preservando saves CVT1/CVT2 já existentes. Nenhum save é apagado, renomeado ou convertido sem necessidade.
+- **Cidade 2** e **Cidade 3** ficam em `cidade-viva/slots/cidade-2.cvt` e `cidade-viva/slots/cidade-3.cvt`, cada um com seus próprios arquivos de backup e recuperação.
+- O menu mostra população, dia, dinheiro, espaço em uso, espaço vazio ou arquivo protegido por corrupção. Escolha o espaço e confirme em **ABRIR CIDADE** ou **CRIAR NOVA**.
+- Trocar salva a cidade atual *antes* de ativar o próximo espaço. Uma falha na leitura de um espaço não sobrescreve dados antigos. Espaços ocupados **não podem ser reiniciados** por esse menu.
+- O espaço selecionado é lembrado após fechar/reabrir o app.
+- Cidades novas dos espaços 2 e 3 têm lagos e matas com pequenas variações determinísticas. O arquivo salvo continua representando todos os tiles sem alterar os formatos CVT1/CVT2.
+- O botão superior **CENTRAR** permanece disponível ao lado de CIDADES.
+- **AVISO:** a primeira cidade não pode ser recriada enquanto já existir um save; isso é intencional para proteger seu progresso. Não desinstale o app de testes para criar novo mapa.
+- **QA pendente:** avaliar o menu com toques, orientação, troca de slots, reinício e visual do novo mapa no Android real. Checklist em `QA-ANDROID-0.2.0-alpha4.md`.

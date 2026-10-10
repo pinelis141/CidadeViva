@@ -18,3 +18,5 @@ java -cp "$DIR" br.com.cidadeviva.sim.CityRoadAccessTest
 java -cp "$DIR" br.com.cidadeviva.storage.CitySaveStoreTest
 
 java -cp "$DIR" br.com.cidadeviva.sim.CityTerrainTest
+
+java -cp "$DIR" br.com.cidadeviva.storage.CitySlotsTest

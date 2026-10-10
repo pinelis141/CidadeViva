@@ -16,17 +16,22 @@ public final class City {
     private int day = 1;
     private int lastIncome = 0;
 
-    public City() {
+    public City() { this(0); }
+
+    /** Distinct deterministic layouts per save slot; slot one preserves original map. */
+    public City(int seed) {
+        int dx=seed==0?0:Math.floorMod(seed*13,9)-4;
+        int dy=seed==0?0:Math.floorMod(seed*7,9)-4;
         for (int x = 0; x < WIDTH; x++) for (int y = 0; y < HEIGHT; y++) {
             // Ilhas de água, faixas de mata; centro reservado para uma cidade inicial.
             // Deterministic connected lakes and groves; saves keep their existing terrain.
             // Rivers/lakes are contiguous, rather than unrelated blue checkered squares.
-            double southLake = square((x-5.5)/8.1) + square((y-38.0)/9.5);
-            double northPond = square((x-40.0)/4.8) + square((y-8.5)/3.5);
+            double southLake = square((x-(5.5+dx))/8.1) + square((y-(38.0+dy))/9.5);
+            double northPond = square((x-(40.0-dx))/4.8) + square((y-(8.5-dy))/3.5);
             double shoreNoise = 0.10*Math.sin(x*0.91+y*0.38) + 0.07*Math.cos(x*0.37-y*0.79);
             boolean center = Math.abs(x - WIDTH / 2) < 9 && Math.abs(y - HEIGHT / 2) < 9;
             boolean water = !center && (southLake < 1.0+shoreNoise || northPond < 0.93+shoreNoise);
-            double grove = Math.sin(x*0.31+1.8)*Math.cos(y*0.23+0.7)
+            double grove = Math.sin((x+dx)*0.31+1.8)*Math.cos((y+dy)*0.23+0.7)
                 + 0.24*Math.sin((x+y)*0.71);
             boolean forest = !center && grove > 0.59
                 && Math.floorMod((x*113+y*71+x*y*5),7)!=0;
