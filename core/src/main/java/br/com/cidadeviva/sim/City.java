@@ -1,6 +1,5 @@
 package br.com.cidadeviva.sim;
 
-import java.util.Random;
 import java.util.List;
 import java.util.LinkedHashSet;
 import br.com.cidadeviva.input.BuildStroke;
@@ -11,7 +10,6 @@ public final class City {
     public static final int HEIGHT = 48;
     private static final int INITIAL_MONEY = 15000;
     private final Tile[][] tiles = new Tile[WIDTH][HEIGHT];
-    private final Random random = new Random(1219);
     private int money = INITIAL_MONEY;
     private int day = 1;
     private int lastIncome = 0;
@@ -173,8 +171,8 @@ public final class City {
         if (!t.type.isZone()) return "Toque em uma zona para ver detalhes";
         String kind=t.type==TileType.RESIDENTIAL?"CASAS":
             t.type==TileType.COMMERCIAL?"LOJAS":"INDUSTRIA";
-        String access=hasRoad(x,y)?"RUA AO LADO":"SEM RUA ADJACENTE";
-        return kind+" NIVEL "+t.level+" | "+access;
+        CityEconomy report=economy();
+        return kind+" NV "+t.level+" | "+(hasRoad(x,y)?"RUA AO LADO | ":"")+report.mainConstraint(t.type,hasRoad(x,y));
     }
 
     public boolean hasRoad(int x,int y) {
@@ -209,17 +207,38 @@ public final class City {
         return result;
     }
 
-    /** Um ciclo de simulação. Crescimento depende de estrada adjacente e oportunidades. */
+    /** A transparent, read-only report recomputed from persisted city tiles. */
+    public CityEconomy economy() { return CityEconomy.analyze(this); }
+
+    /** Deterministic local growth roll. Reloading a save never changes the day's random result. */
+    private static float growthRoll(int day,int x,int y,int salt) {
+        int v=day*0x9e3779b9 ^ x*0x85ebca6b ^ y*0xc2b2ae35 ^ salt*0x27d4eb2d;
+        v ^= v >>> 16; v *= 0x7feb352d; v ^= v >>> 15;
+        v *= 0x846ca68b; v ^= v >>> 16;
+        return (v & 0x7fffffff) / 2147483648f;
+    }
+
+    /**
+     * One day of demand-driven growth and actual revenue/maintenance.
+     * Low-demand zones wait instead of appearing randomly. Only roadside lots grow.
+     */
     public void nextDay() {
+        CityEconomy report = economy();
         day++;
-        int employed = Math.min(residents(), jobs());
-        lastIncome = Math.max(0, residents() / 5) + employed / 4 + zones() * 2 - roads();
-        money = Math.max(0, money + lastIncome); // Evita saldo negativo incompatível com o formato de save.
+        lastIncome = report.net;
+        // Legacy saves store a nonnegative balance. A deficit consumes the treasury
+        // down to zero rather than writing an incompatible negative money field.
+        money = (int)Math.max(0L,Math.min(Integer.MAX_VALUE,(long)money + report.net));
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++) {
             Tile t = tiles[x][y];
             if (!t.type.isZone() || !hasRoad(x,y)) continue;
-            if (t.level == 0 && random.nextFloat() < 0.18f) t.level=1;
-            else if (t.level > 0 && t.level < 3 && random.nextFloat() < (t.level==1?0.010f:0.003f)) t.level++;
+            int demand=report.demand(t.type);
+            if (demand < 24) continue;
+            // Level 0 can grow readily; taller buildings require sustained demand.
+            float rate=t.level==0?0.018f + demand*0.0017f:
+                t.level==1?0.001f + demand*0.00028f:
+                t.level==2?0.0005f + demand*0.00012f:0f;
+            if (t.level < 3 && growthRoll(day,x,y,0) < rate) t.level++;
         }
     }
 

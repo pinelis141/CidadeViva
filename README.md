@@ -1,3 +1,13 @@
+# Cidade Viva — Java/libGDX Android
+
+Versão em desenvolvimento: **0.3.0-alpha1**.
+
+### Economia desta versão
+
+Demanda residencial, comercial e industrial no HUD (R/C/I), crescimento condicionado a demanda + rua próxima, vagas e desemprego, receita/ manutenção e saldo por dia. O simulador permanece em Java puro; informações completas em [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md). Testes físicos: [QA-ANDROID-0.3.0-alpha1.md](QA-ANDROID-0.3.0-alpha1.md).
+
+**Saves preservados:** a estrutura CVT1/CVT2 e os três slots da Alpha 4 continuam compatíveis; novas regras econômicas passam a valer na simulação após atualizar.
+
 # Cidade Viva — Java / libGDX / Android
 
 **Versão de testes: 0.2.0-alpha4** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.

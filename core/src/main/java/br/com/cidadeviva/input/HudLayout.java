@@ -4,10 +4,10 @@ package br.com.cidadeviva.input;
 public final class HudLayout {
     public static final int ACTIONS = 6;
     public static final int TOOLS = 5;
-    public static final float TOP_HEIGHT = 152f;
+    public static final float TOP_HEIGHT = 194f;
     public static final float BOTTOM_HEIGHT = 117f;
-    public static final float ACTION_TOP = 106f;
-    public static final float ACTION_HEIGHT = 42f;
+    public static final float ACTION_TOP = 145f;
+    public static final float ACTION_HEIGHT = 45f;
     private HudLayout() { }
 
     public static float scale(float width, float height) {
