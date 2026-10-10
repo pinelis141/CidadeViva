@@ -8,6 +8,7 @@ import br.com.cidadeviva.input.HudLayout;
 import br.com.cidadeviva.input.BuildStroke;
 import br.com.cidadeviva.input.IsoGrid;
 import br.com.cidadeviva.storage.CitySaveStore;
+import br.com.cidadeviva.storage.CitySlots;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -54,7 +55,11 @@ public final class CityGame extends ApplicationAdapter {
     private GlyphLayout glyph;
     private Matrix4 uiProjection;
     private final Vector3 scratch = new Vector3();
-    private CitySaveStore saves;
+    private CitySlots saves;
+    private boolean savesReady = false;
+    private boolean slotsVisible = false;
+    private int selectedSlot = -1;
+    private CitySlots.SlotInfo[] slotInfo = new CitySlots.SlotInfo[CitySlots.COUNT];
     private TileType selected = TileType.ROAD;
     private int hoverX = -1, hoverY = -1;
     private float simClock = 0;
@@ -94,7 +99,7 @@ public final class CityGame extends ApplicationAdapter {
 
     @Override public void create() {
         city = new City();
-        saves = new CitySaveStore(Gdx.files.local(SAVE_PATH).file());
+        saves = new CitySlots(Gdx.files.local("cidade-viva").file());
         camera = new OrthographicCamera();
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -107,7 +112,18 @@ public final class CityGame extends ApplicationAdapter {
         camera.zoom = 0.95f;
         clampCamera();
         Gdx.input.setInputProcessor(new Controls());
-        load(false); // Se houver progresso anterior, restaurar automaticamente.
+        try {
+            CitySlots.Opened opened=saves.openActive();
+            city=opened.city;
+            savesReady=true;
+            if(opened.fromBackup)message("Cidade recuperada do backup!");
+        } catch(Exception e) {
+            savesReady=false;
+            simulationPaused=true;
+            openSlots();
+            message("Salvamento com erro. Escolha outro espaco sem apagar o atual.");
+            Gdx.app.error("CidadeViva","Erro ao abrir cidade ativa",e);
+        }
     }
 
     @Override public void resize(int width,int height) {
@@ -122,7 +138,7 @@ public final class CityGame extends ApplicationAdapter {
     @Override public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
         toastClock -= delta;
-        if (!simulationPaused) {
+        if (!simulationPaused && savesReady && !slotsVisible) {
             simClock += delta * simulationSpeed;
             while (simClock >= 4f) {
                 simClock -= 4f;
@@ -371,6 +387,10 @@ public final class CityGame extends ApplicationAdapter {
             shapes.rect(bx+2*u,17*u,bw-4*u,84*u);
             drawToolIcon(i,bx+bw*0.5f,75*u,u);
         }
+        // Separate quick-access controls for the save-slot screen and recentering.
+        shapes.setColor(rgb(51,72,73));
+        shapes.rect(w-244*u,h-48*u,124*u,40*u);
+        shapes.rect(w-117*u,h-48*u,112*u,40*u);
         for (int i=0;i<HudLayout.ACTIONS;i++) {
             float bx=i*w/HudLayout.ACTIONS+3*u;
             float by=h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT)*u;
@@ -385,12 +405,13 @@ public final class CityGame extends ApplicationAdapter {
             shapes.setColor(rgb(34,54,59));
             shapes.rect(15*u,h/2f-115*u,w-30*u,230*u);
         }
+        if (slotsVisible) drawSlotsOverlay(u);
         shapes.end();
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         font.setColor(rgb(235,243,227));
         font.getData().setScale(1.20f*u);
-        font.draw(batch,"CIDADE VIVA  0.2.0a3",12*u,h-19*u);
+        font.draw(batch,"CIDADE VIVA  0.2.0a4",12*u,h-19*u);
         font.getData().setScale(1.10f*u);
         font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
         font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);
@@ -401,8 +422,11 @@ public final class CityGame extends ApplicationAdapter {
         font.setColor(rgb(235,243,227));
         font.setColor(rgb(243,226,158));
         font.getData().setScale(0.90f*u);
+        font.getData().setScale(1.00f*u);
+        glyph.setText(font,"CIDADES");
+        font.draw(batch,"CIDADES",w-182*u-glyph.width*0.5f,h-22*u);
         glyph.setText(font,"CENTRAR");
-        font.draw(batch,"CENTRAR",w-glyph.width-10*u,h-18*u);
+        font.draw(batch,"CENTRAR",w-61*u-glyph.width*0.5f,h-22*u);
         font.getData().setScale(1.12f*u);
         for (int i=0;i<HudLayout.ACTIONS;i++) {
             String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):
@@ -441,14 +465,131 @@ public final class CityGame extends ApplicationAdapter {
             font.draw(batch,"CENTRAR: volta para a cidade",x,y-153*u);
             font.draw(batch,"Toque na tela para fechar",x,y-182*u);
         }
+        if (slotsVisible) drawSlotsText(u);
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private float slotsW(float u) {return Math.min(w-24*u,540*u);}
+    private float slotsX(float u) {return (w-slotsW(u))*0.5f;}
+    private float slotsY(float u) {return h*0.5f-226*u;}
+    private float slotRowY(int index,float u) {return slotsY(u)+(280-index*84)*u;}
+
+    private void refreshSlotInfo() {
+        for(int i=0;i<CitySlots.COUNT;i++)slotInfo[i]=saves.inspect(i+1);
+    }
+    private void openSlots() {
+        if (!savesReady) simulationPaused=true;
+        selectedSlot=saves.active();
+        refreshSlotInfo();
+        slotsVisible=true;
+    }
+    private void drawSlotsOverlay(float u) {
+        shapes.setColor(0.02f,0.04f,0.04f,0.90f);
+        shapes.rect(0,0,w,h);
+        float xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
+        shapes.setColor(rgb(28,48,53));
+        shapes.rect(xx,yy,ww,452*u);
+        shapes.setColor(rgb(123,173,145));
+        shapes.rect(xx,yy+448*u,ww,4*u);
+        for(int i=0;i<CitySlots.COUNT;i++) {
+            float sy=slotRowY(i,u);
+            boolean sel=selectedSlot==i+1;
+            shapes.setColor(sel?rgb(208,191,124):rgb(62,88,92));
+            shapes.rect(xx+12*u,sy,ww-24*u,72*u);
+            shapes.setColor(sel?rgb(64,72,67):rgb(35,56,64));
+            shapes.rect(xx+15*u,sy+3*u,ww-30*u,66*u);
+        }
+        shapes.setColor(rgb(47,108,80));
+        shapes.rect(xx+12*u,yy+15*u,(ww-33*u)*0.62f,47*u);
+        shapes.setColor(rgb(91,64,69));
+        shapes.rect(xx+21*u+(ww-33*u)*0.62f,yy+15*u,(ww-33*u)*0.38f,47*u);
+    }
+    private void drawSlotsText(float u) {
+        float xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
+        font.setColor(rgb(239,244,216));
+        font.getData().setScale(1.32f*u);
+        font.draw(batch,"MINHAS CIDADES",xx+24*u,yy+414*u);
+        font.getData().setScale(0.92f*u);
+        font.draw(batch,"3 espacos independentes. Nenhum e apagado ao trocar.",xx+24*u,yy+380*u);
+        for(int i=0;i<CitySlots.COUNT;i++) {
+            CitySlots.SlotInfo info=slotInfo[i];
+            if(info==null)continue;
+            float sy=slotRowY(i,u);
+            font.setColor(rgb(245,242,212));
+            font.getData().setScale(1.16f*u);
+            font.draw(batch,"CIDADE "+info.slot+(info.active?"  - EM USO":""),xx+27*u,sy+51*u);
+            font.getData().setScale(0.92f*u);
+            font.setColor(info.corrupt?rgb(245,135,121):rgb(207,224,205));
+            String description=info.corrupt?"ARQUIVO COM ERRO - NAO SERA APAGADO":
+                info.empty?"VAZIA - TOQUE PARA CRIAR":"DIA "+info.day+" | POP "+info.population+" | R$ "+info.money+
+                (info.backupUsed?" | BACKUP":"");
+            font.draw(batch,description,xx+27*u,sy+22*u);
+        }
+        font.setColor(rgb(245,244,217));
+        font.getData().setScale(1.08f*u);
+        String action="ABRIR / CRIAR";
+        if(selectedSlot>=1 && selectedSlot<=CitySlots.COUNT && slotInfo[selectedSlot-1]!=null) {
+            CitySlots.SlotInfo chosen=slotInfo[selectedSlot-1];
+            if(chosen.active)action="CONTINUAR";
+            else if(chosen.corrupt)action="PROTEGIDA";
+            else if(chosen.empty)action="CRIAR NOVA";
+            else action="ABRIR CIDADE";
+        }
+        font.draw(batch,action,xx+30*u,yy+44*u);
+        font.draw(batch,"VOLTAR",xx+ww-125*u,yy+44*u);
+        font.getData().setScale(0.88f*u);
+        font.setColor(rgb(190,217,184));
+        font.draw(batch,"O espaco 1 preserva o salvamento original.",xx+22*u,yy+77*u);
+    }
+    private void slotsTap(int screenX,int screenY) {
+        float u=uiScale,xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
+        float x=screenX,y=h-screenY;
+        if(x<xx || x>xx+ww || y<yy || y>yy+452*u) return;
+        for(int i=0;i<CitySlots.COUNT;i++) {
+            float rowY=slotRowY(i,u);
+            if(y>=rowY && y<=rowY+72*u) {
+                selectedSlot=i+1;
+                return;
+            }
+        }
+        if(y>=yy+15*u && y<=yy+62*u) {
+            if(x>xx+20*u+(ww-33*u)*0.62f) {
+                if(savesReady)slotsVisible=false;
+                return;
+            }
+            if(selectedSlot<1)return;
+            if(selectedSlot==saves.active()) {
+                if(savesReady) slotsVisible=false;
+                return;
+            }
+            if(slotInfo[selectedSlot-1].corrupt) {
+                message("Cidade protegida: save danificado. Use outro espaco.");
+                return;
+            }
+            try {
+                CitySlots.Opened opened=saves.switchTo(selectedSlot,city,savesReady);
+                city=opened.city;
+                savesReady=true;
+                slotsVisible=false;
+                simulationPaused=false;
+                simClock=0;
+                recenter();
+                message(opened.created?"Nova cidade criada no espaco "+selectedSlot:
+                    "Cidade "+selectedSlot+" carregada"+(opened.fromBackup?" (backup)":""));
+            } catch(Exception e) {
+                message("Erro ao trocar cidade: dados preservados");
+                Gdx.app.error("CidadeViva","Falha ao trocar slot",e);
+                refreshSlotInfo();
+            }
+        }
     }
 
     private void message(String text) { toast=text;toastClock=3f; }
 
     private void save(boolean feedback) {
         try {
+            if(!savesReady)throw new IllegalStateException("Cidade não carregada com segurança");
             saves.save(city);
             if (feedback) message("Cidade salva no dispositivo!");
         } catch (Exception e) {
@@ -459,12 +600,13 @@ public final class CityGame extends ApplicationAdapter {
 
     private void load(boolean feedback) {
         try {
-            CitySaveStore.Loaded result = saves.load();
+            CitySaveStore.Loaded result = saves.store(saves.active()).load();
             if (result == null) {
                 if (feedback) message("Ainda não ha cidade salva");
                 return;
             }
             city = result.city;
+            savesReady=true;
             if (result.fromBackup) message("Backup recuperado! Salve novamente.");
             else if (feedback) message("Cidade carregada!");
         } catch (Exception e) {
@@ -472,10 +614,10 @@ public final class CityGame extends ApplicationAdapter {
             Gdx.app.error("CidadeViva","Erro ao carregar",e);
         }
     }
-    @Override public void pause() { save(false); }
+    @Override public void pause() { if(savesReady)save(false); }
 
     @Override public void dispose() {
-        save(false);
+        if(savesReady)save(false);
         shapes.dispose();batch.dispose();font.dispose();pixelArt.dispose();
     }
 
@@ -598,6 +740,10 @@ public final class CityGame extends ApplicationAdapter {
 
     private final class Controls extends InputAdapter {
         @Override public boolean touchDown(int screenX,int screenY,int pointer,int button) {
+            if (slotsVisible) {
+                if(pointer==0) { down[0]=true;px[0]=screenX;py[0]=screenY; }
+                return true;
+            }
             if (pointer > 1) {
                 suppressTap=true;
                 return true;
@@ -612,7 +758,7 @@ public final class CityGame extends ApplicationAdapter {
                 pendingAction=-1;
                 pendingTool=-1;
                 startedOnUi=helpVisible || HudLayout.isHud(screenX,screenY,w,h,uiScale);
-                pendingRecenter=!helpVisible && screenX>=w-115*uiScale &&
+                pendingRecenter=!helpVisible && screenX>=w-117*uiScale &&
                     screenY>=0 && screenY<=55*uiScale;
                 brushCells.clear();
                 brushGesture=false;
@@ -638,6 +784,7 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchDragged(int screenX,int screenY,int pointer) {
+            if (slotsVisible)return true;
             if (pointer>1 || !down[pointer])return false;
             float prevX=px[pointer], prevY=py[pointer];
             float oldMidX=(px[0]+px[1])*0.5f,oldMidY=(py[0]+py[1])*0.5f;
@@ -669,6 +816,14 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchUp(int screenX,int screenY,int pointer,int button) {
+            if(slotsVisible) {
+                if(pointer==0 && down[0]) {
+                    down[0]=false;
+                    if(Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale)
+                        slotsTap(screenX,screenY);
+                }
+                return true;
+            }
             if(pointer>1)return true;
             if(!down[pointer])return true;
             down[pointer]=false;
@@ -678,7 +833,9 @@ public final class CityGame extends ApplicationAdapter {
                 } else if (startedOnUi && !suppressTap && !moving) {
                     int action=HudLayout.actionAt(screenX,screenY,w,uiScale);
                     int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
-                    if (pendingRecenter && screenX>=w-115*uiScale && screenY<=55*uiScale) recenter();
+                    if(screenY<=55*uiScale && screenX>=w-244*uiScale &&
+                       screenX<w-120*uiScale) openSlots();
+                    else if (pendingRecenter && screenX>=w-117*uiScale && screenY<=55*uiScale) recenter();
                     else if (action>=0 && action==pendingAction) activateAction(action);
                     else if (tool>=0 && tool==pendingTool) {
                         selected=tools[tool];
@@ -708,6 +865,12 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean keyDown(int keycode) {
+            if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK) {
+                if(slotsVisible && savesReady)slotsVisible=false;
+                else openSlots();
+                return true;
+            }
+            if(slotsVisible)return true;
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
             if(keycode==Input.Keys.SPACE)activateAction(0);

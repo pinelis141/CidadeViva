@@ -1,3 +1,15 @@
+# Cidade Viva — histórico de alterações
+
+## 0.2.0 Alpha 4 — Vários espaços de cidade
+
+- Menu de três espaços independentes, cada um com dia, população e saldo.
+- Slot 1 conserva o caminho de salvamento existente, incluindo backup e proteção CRC32.
+- Nova Cidade nos espaços vazios, sem apagar cidade anterior; proteção de espaços danificados.
+- Troca entre cidades com salvamento do slot anterior antes de ativar o próximo.
+- Persistência do espaço ativo após fechar/reabrir o aplicativo.
+- Pequenas variações determinísticas de terreno para novas cidades.
+- Testes pure-Java cobrindo troca, independência de dados, saves antigos, corrupção e restart.
+
 # Histórico de versões
 
 ## 0.2.0-alpha3 — 10/10/2026
