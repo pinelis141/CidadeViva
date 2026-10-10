@@ -94,6 +94,25 @@ A primeira revisão de arte e interface chegou à `main` por meio do [PR #18](ht
 - [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md) e [QA-ANDROID-0.3.0-alpha1.md](QA-ANDROID-0.3.0-alpha1.md).
 
 **A Alpha 1 está implementada, mas o marco 0.3.0 continua aberto.**
+## Atualização — 0.3.0-alpha2 (impostos, orçamento e abandono)
+
+**Código integrado à main:** [PR #24](https://github.com/pinelis141/CidadeViva/pull/24). Testes de lógica, atlas e compilação Android aprovados na branch; aceite Android físico pendente.
+
+| ID | Situação | Faltando |
+|---|---|---|
+| CV-013 | Demanda R/C/I com ajuste por impostos implementada | Ajustar equilíbrio via jogo real |
+| CV-014 | Crescimento condicionado por demanda/rua e abandono gradual depois de 12 dias | Confirmar abandono e recuperação no Android |
+| CV-015 | Orçamento e imposto R/C/I ajustável 5–20%; receita/despesa por setor | Revisão da progressão, déficits e políticas fiscais |
+| CV-016 | Não iniciado | Progressão, missões e desbloqueios |
+| CV-017 | Painel ECON com detalhamento e ações +/− | Verificar responsividade e legibilidade no dispositivo |
+
+- Salvos **CVT3** com impostos e histórico de baixa demanda; leitura de **CVT1/CVT2** mantida e 3 slots independentes.
+- O novo formato não é lido por APKs anteriores: **não reverter versão após salvar com Alpha 2**.
+- Testes Java: **2.346 verificações novas** de tributação, corrupção, migração, isolamento e abandono determinístico, além das regressões anteriores.
+- [QA em dispositivo — issue #25](https://github.com/pinelis141/CidadeViva/issues/25).
+- Documentos: [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md) e [QA-ANDROID-0.3.0-alpha2.md](QA-ANDROID-0.3.0-alpha2.md).
+
+**Marco 0.3.0 continua aberto:** faltam progressão (CV-016), polimento de equilíbrio e validação real no celular.
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
