@@ -5,6 +5,7 @@ import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.Tile;
 import br.com.cidadeviva.sim.TileType;
 import br.com.cidadeviva.input.HudLayout;
+import br.com.cidadeviva.input.BuildStroke;
 import br.com.cidadeviva.input.IsoGrid;
 import br.com.cidadeviva.storage.CitySaveStore;
 import com.badlogic.gdx.ApplicationAdapter;
@@ -23,6 +24,9 @@ import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 /** Entrada libGDX: jogo 2D isométrico, controles Android e HUD sem assets externos. */
@@ -52,13 +56,17 @@ public final class CityGame extends ApplicationAdapter {
     private TileType selected = TileType.ROAD;
     private int hoverX = -1, hoverY = -1;
     private float simClock = 0;
-    private String toast = "Toque no mapa para construir. Arraste para mover.";
+    private String toast = "MODO MOVER: arraste para navegar. Toque para construir.";
     private float toastClock = 5f;
     private float uiScale = 1f;
     private boolean simulationPaused = false;
     private int simulationSpeed = 1;
     private boolean helpVisible = false;
-    private static final String[] ACTION_LABELS = {"PAUSA", "1X", "AJUDA", "SALVAR", "ABRIR"};
+    private static final String[] ACTION_LABELS = {"PAUSA", "1X", "MOVER", "AJUDA", "SALVAR", "ABRIR"};
+    private boolean paintMode=false;
+    private boolean brushGesture=false;
+    private int startX,startY,lastStrokeX,lastStrokeY;
+    private final LinkedHashSet<BuildStroke.Cell> brushCells=new LinkedHashSet<>();
     private float w, h;
     private final boolean[] down = new boolean[2];
     private final float[] px = new float[2], py = new float[2];
@@ -68,6 +76,7 @@ public final class CityGame extends ApplicationAdapter {
     private float pinchDistance;
     private boolean suppressTap;
     private int pendingAction = -1, pendingTool = -1;
+    private boolean pendingRecenter = false;
     private boolean secondPointerOnHud = false;
 
     private static final Map<Integer,Color> PALETTE = new HashMap<>();
@@ -122,9 +131,13 @@ public final class CityGame extends ApplicationAdapter {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         camera.update();
         shapes.setProjectionMatrix(camera.combined);
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         drawMap();
+        drawBuildPreview();
         shapes.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
         drawHud();
     }
 
@@ -157,11 +170,7 @@ public final class CityGame extends ApplicationAdapter {
             default: shapes.setColor(((x*3+y)&1)==0 ? rgb(112,160,95):rgb(118,170,103));
         }
         diamond(sx,sy,HALF_W-0.6f,HALF_H-0.4f);
-        if (t.type == TileType.ROAD) {
-            shapes.setColor(rgb(221,190,106));
-            // Marca viária sutil; pavimentação permanece alinhada à malha isométrica.
-            thinDiamond(sx,sy,13,6);
-        }
+        if (t.type == TileType.ROAD) drawRoadConnections(sx,sy,city.roadMask(x,y));
         if (t.type.isZone() && t.level == 0) {
             shapes.setColor(rgb(170,198,164));
             thinDiamond(sx,sy,20,10);
@@ -169,6 +178,38 @@ public final class CityGame extends ApplicationAdapter {
         if (x==hoverX && y==hoverY) {
             shapes.setColor(rgb(250,230,133));
             thinDiamond(sx,sy,30,15);
+        }
+    }
+
+    /** A pavement marking is derived from the four actual road neighbors, never guessed. */
+    private void drawRoadConnections(float sx,float sy,int mask) {
+        if (mask==0) {
+            shapes.setColor(rgb(206,195,144));
+            thinDiamond(sx,sy,8,4);
+            return;
+        }
+        shapes.setColor(rgb(209,191,132));
+        if ((mask&1)!=0) roadDash(sx,sy,13f,-6.5f);
+        if ((mask&2)!=0) roadDash(sx,sy,-13f,6.5f);
+        if ((mask&4)!=0) roadDash(sx,sy,-13f,-6.5f);
+        if ((mask&8)!=0) roadDash(sx,sy,13f,6.5f);
+        shapes.setColor(rgb(138,146,150));
+        shapes.rect(sx-1f,sy-1f,2f,2f);
+    }
+
+    private void roadDash(float sx,float sy,float dx,float dy) {
+        shapes.rectLine(sx+dx*0.44f,sy+dy*0.44f,sx+dx*0.90f,sy+dy*0.90f,1.9f);
+    }
+
+    private void drawBuildPreview() {
+        if (!paintMode || !brushGesture || brushCells.isEmpty()) return;
+        for (BuildStroke.Cell cell:brushCells) {
+            if (!city.inBounds(cell.x,cell.y)) continue;
+            float sx=(cell.x-cell.y)*HALF_W, sy=-(cell.x+cell.y)*HALF_H;
+            if (city.canBuild(cell.x,cell.y,selected))
+                shapes.setColor(0.32f,0.94f,0.62f,0.50f);
+            else shapes.setColor(1f,0.30f,0.30f,0.52f);
+            diamond(sx,sy,HALF_W-1f,HALF_H-1f);
         }
     }
 
@@ -201,7 +242,7 @@ public final class CityGame extends ApplicationAdapter {
 
     /** Prismas isométricos coloridos funcionam como sprites provisórios, sem assets protegidos. */
     private void drawBuilding(float sx,float sy,TileType type,int level) {
-        float hw=17, hh=9, z=17+level*13;
+        float hw=17, hh=9, z=12+level*11;
         Color roof, left, right;
         if (type == TileType.RESIDENTIAL) {
             roof=rgb(176,87,81);left=rgb(231,218,171);right=rgb(188,174,137);
@@ -258,7 +299,7 @@ public final class CityGame extends ApplicationAdapter {
             float bx=i*w/HudLayout.ACTIONS+3*u;
             float by=h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT)*u;
             float bw=w/HudLayout.ACTIONS-6*u;
-            boolean active=(i==0 && simulationPaused);
+            boolean active=(i==0 && simulationPaused) || (i==2 && paintMode);
             shapes.setColor(active?rgb(155,113,72):rgb(49,76,83));
             shapes.rect(bx,by,bw,(HudLayout.ACTION_HEIGHT-3)*u);
         }
@@ -272,26 +313,37 @@ public final class CityGame extends ApplicationAdapter {
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         font.setColor(rgb(235,243,227));
-        font.getData().setScale(1.03f*u);
-        font.draw(batch,"CIDADE VIVA  0.1.1",12*u,h-17*u);
-        font.getData().setScale(0.89f*u);
+        font.getData().setScale(1.16f*u);
+        font.draw(batch,"CIDADE VIVA  0.2.0a1",12*u,h-18*u);
+        font.getData().setScale(1.01f*u);
         font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-41*u);
         font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-62*u);
+        font.setColor(rgb(243,226,158));
         font.getData().setScale(0.90f*u);
+        glyph.setText(font,"CENTRAR");
+        font.draw(batch,"CENTRAR",w-glyph.width-10*u,h-18*u);
+        font.getData().setScale(0.96f*u);
         for (int i=0;i<HudLayout.ACTIONS;i++) {
-            String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):ACTION_LABELS[i];
+            String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):
+                i==2?(paintMode?"PINTAR":"MOVER"):ACTION_LABELS[i];
             glyph.setText(font,text);
             float bw=w/HudLayout.ACTIONS;
             font.draw(batch,text,i*bw+(bw-glyph.width)/2f,h-99*u);
         }
-        font.getData().setScale(0.91f*u);
+        font.getData().setScale(1.02f*u);
         for (int i=0;i<HudLayout.TOOLS;i++) {
             glyph.setText(font,toolNames[i]);
             float bw=w/HudLayout.TOOLS;
             font.draw(batch,toolNames[i],i*bw+(bw-glyph.width)*0.5f,27*u);
         }
-        if (toastClock>0 && !helpVisible) {
-            font.getData().setScale(0.87f*u);
+        if (!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
+            City.BuildResult preview=city.preview(new ArrayList<>(brushCells),selected);
+            font.getData().setScale(1.05f*u);
+            font.setColor(preview.insufficientFunds?rgb(250,140,119):rgb(251,235,171));
+            font.draw(batch,"AREA "+preview.built+" | R$ "+preview.cost+
+                (preview.ignored>0?" | BLOQ "+preview.ignored:"") ,12*u,(HudLayout.BOTTOM_HEIGHT+20)*u);
+        } else if (toastClock>0 && !helpVisible) {
+            font.getData().setScale(1.00f*u);
             font.setColor(rgb(252,244,191));
             font.draw(batch,toast,12*u,(HudLayout.BOTTOM_HEIGHT+20)*u);
         }
@@ -302,10 +354,11 @@ public final class CityGame extends ApplicationAdapter {
             font.draw(batch,"COMO JOGAR",x,y);
             font.getData().setScale(0.93f*u);
             font.draw(batch,"Toque: construir no terreno",x,y-38*u);
-            font.draw(batch,"Arraste: mover a camera",x,y-67*u);
-            font.draw(batch,"Dois dedos: aproximar/afastar",x,y-96*u);
-            font.draw(batch,"Use SALVAR para guardar a cidade",x,y-125*u);
-            font.draw(batch,"Toque na tela para fechar",x,y-166*u);
+            font.draw(batch,"MOVER: arraste a camera",x,y-67*u);
+            font.draw(batch,"PINTAR: arraste ruas e areas",x,y-96*u);
+            font.draw(batch,"Dois dedos: mover/zoom",x,y-125*u);
+            font.draw(batch,"CENTRAR: volta para a cidade",x,y-153*u);
+            font.draw(batch,"Toque na tela para fechar",x,y-182*u);
         }
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
@@ -356,6 +409,12 @@ public final class CityGame extends ApplicationAdapter {
         camera.update();
     }
 
+    private void recenter() {
+        camera.position.set(0,-(City.WIDTH/2f+City.HEIGHT/2f)*HALF_H,0);
+        clampCamera();
+        message("Camera centralizada");
+    }
+
     private void pan(float dx,float dy) {
         camera.position.add(-dx*camera.zoom,dy*camera.zoom,0);
         clampCamera();
@@ -382,6 +441,44 @@ public final class CityGame extends ApplicationAdapter {
         hoverX=x;hoverY=y;
     }
 
+    /** The touch and drag selection share the same screen-to-isometric-grid mapping. */
+    private int[] cellAt(int screenX,int screenY) {
+        scratch.set(screenX,screenY,0);
+        camera.unproject(scratch);
+        return IsoGrid.pick(scratch.x,scratch.y,HALF_W,HALF_H);
+    }
+
+    private void startStroke(int screenX,int screenY) {
+        brushCells.clear();
+        int[] cell=cellAt(screenX,screenY);
+        startX=lastStrokeX=cell[0];
+        startY=lastStrokeY=cell[1];
+        if (city.inBounds(startX,startY)) brushCells.add(new BuildStroke.Cell(startX,startY));
+        brushGesture=false;
+    }
+
+    private void strokeTo(int screenX,int screenY) {
+        int[] cell=cellAt(screenX,screenY);
+        if (!city.inBounds(cell[0],cell[1])) return;
+        if (selected==TileType.ROAD) {
+            // Union of consecutive segments avoids missing cells at low frame rates.
+            brushCells.addAll(BuildStroke.line(lastStrokeX,lastStrokeY,cell[0],cell[1]));
+            lastStrokeX=cell[0]; lastStrokeY=cell[1];
+        } else {
+            brushCells.clear();
+            brushCells.addAll(BuildStroke.rectangle(startX,startY,cell[0],cell[1]));
+        }
+    }
+
+    private void finishStroke(int screenX,int screenY) {
+        strokeTo(screenX,screenY);
+        City.BuildResult result=city.buildArea(new ArrayList<>(brushCells),selected);
+        message(result.feedback());
+        brushCells.clear();
+        brushGesture=false;
+        hoverX=-1;hoverY=-1;
+    }
+
     private void activateAction(int index) {
         switch(index) {
             case 0:
@@ -392,9 +489,15 @@ public final class CityGame extends ApplicationAdapter {
                 simulationSpeed=simulationSpeed==1?2:simulationSpeed==2?4:1;
                 message("Velocidade "+simulationSpeed+"x");
                 break;
-            case 2: helpVisible=true;break;
-            case 3: save(true);break;
-            case 4: load(true);break;
+            case 2:
+                paintMode=!paintMode;
+                brushCells.clear();
+                message(paintMode?"PINTAR: arraste para construir. Dois dedos movem camera.":
+                    "MOVER: arraste a camera. Toque para construir.");
+                break;
+            case 3: helpVisible=true;break;
+            case 4: save(true);break;
+            case 5: load(true);break;
             default: break;
         }
     }
@@ -415,6 +518,11 @@ public final class CityGame extends ApplicationAdapter {
                 pendingAction=-1;
                 pendingTool=-1;
                 startedOnUi=helpVisible || HudLayout.isHud(screenX,screenY,w,h,uiScale);
+                pendingRecenter=!helpVisible && screenX>=w-115*uiScale &&
+                    screenY>=0 && screenY<=55*uiScale;
+                brushCells.clear();
+                brushGesture=false;
+                if (!startedOnUi && paintMode) startStroke(screenX,screenY);
                 if (!helpVisible) {
                     pendingAction=HudLayout.actionAt(screenX,screenY,w,uiScale);
                     pendingTool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
@@ -425,6 +533,8 @@ public final class CityGame extends ApplicationAdapter {
             }
             if (down[0] && down[1]) {
                 suppressTap=true;
+                brushCells.clear();
+                brushGesture=false;
                 if (!startedOnUi && !secondPointerOnHud && !helpVisible) {
                     pinchActive=true;
                     moving=true;
@@ -454,6 +564,13 @@ public final class CityGame extends ApplicationAdapter {
             float dx=screenX-prevX,dy=screenY-prevY;
             dragTravel += Math.abs(dx)+Math.abs(dy);
             if (dragTravel>Math.max(10f,12f*uiScale)) moving=true;
+            if (paintMode && pointer==0 && !down[1] && !suppressTap) {
+                if (moving) {
+                    brushGesture=true;
+                    strokeTo(screenX,screenY);
+                }
+                return true;
+            }
             if (moving) pan(dx,dy);
             return true;
         }
@@ -467,18 +584,24 @@ public final class CityGame extends ApplicationAdapter {
                 } else if (startedOnUi && !suppressTap && !moving) {
                     int action=HudLayout.actionAt(screenX,screenY,w,uiScale);
                     int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
-                    if (action>=0 && action==pendingAction) activateAction(action);
+                    if (pendingRecenter && screenX>=w-115*uiScale && screenY<=55*uiScale) recenter();
+                    else if (action>=0 && action==pendingAction) activateAction(action);
                     else if (tool>=0 && tool==pendingTool) {
                         selected=tools[tool];
                         hoverX=-1;hoverY=-1;
                         message("Ferramenta: "+toolNames[tool]+" (R$ "+city.cost(selected)+")");
                     }
+                } else if (brushGesture && paintMode && !startedOnUi && !suppressTap) {
+                    finishStroke(screenX,screenY);
                 } else if (!moving && !startedOnUi && !suppressTap &&
                            !HudLayout.isHud(screenX,screenY,w,h,uiScale)) {
                     buildAt(screenX,screenY);
                 }
                 pendingAction=-1;pendingTool=-1;
+                pendingRecenter=false;
                 startedOnUi=false;
+                brushCells.clear();
+                brushGesture=false;
             }
             if (pointer==1) secondPointerOnHud=false;
             if (!down[0] || !down[1]) pinchActive=false;
@@ -494,6 +617,7 @@ public final class CityGame extends ApplicationAdapter {
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
             if(keycode==Input.Keys.SPACE)activateAction(0);
+            if(keycode==Input.Keys.B)activateAction(2);
             if(keycode==Input.Keys.EQUALS)activateAction(1);
             if(keycode>=Input.Keys.NUM_1 && keycode<=Input.Keys.NUM_5)
                 selected=tools[keycode-Input.Keys.NUM_1];

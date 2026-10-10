@@ -13,11 +13,14 @@ public final class ControlsMathTest {
     public static void main(String[] unused) {
         for (float[] size:new float[][] {{360,800},{412,915},{1080,2400},{2400,1080},{730,970}}) {
             float w=size[0],h=size[1],u=HudLayout.scale(w,h);
-            for (int i=0;i<5;i++) {
-                float cx=(i+0.5f)*w/5f;
+            for (int i=0;i<HudLayout.ACTIONS;i++) {
+                float cx=(i+0.5f)*w/HudLayout.ACTIONS;
                 ok(HudLayout.actionAt(cx,95*u,w,u)==i,"ação central "+i);
-                ok(HudLayout.toolAt(cx,h-40*u,w,h,u)==i,"ferramenta central "+i);
                 ok(HudLayout.isHud(cx,95*u,w,h,u),"faixa superior protegida");
+            }
+            for (int i=0;i<HudLayout.TOOLS;i++) {
+                float cx=(i+0.5f)*w/HudLayout.TOOLS;
+                ok(HudLayout.toolAt(cx,h-40*u,w,h,u)==i,"ferramenta central "+i);
                 ok(HudLayout.isHud(cx,h-40*u,w,h,u),"faixa inferior protegida");
             }
             ok(HudLayout.actionAt(-2,95*u,w,u)==-1,"nunca selecionar fora à esquerda");

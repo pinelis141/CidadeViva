@@ -1,55 +1,36 @@
 # Cidade Viva — Java / libGDX / Android
 
-MVP de city builder isométrico original. **Não utiliza Godot.**
+City builder isométrico original, offline. **Não utiliza Godot.** O repositório do Pixel Chess é separado e não deve ser modificado por este projeto.
 
-## O que já está implementado no código
+## 0.2.0-alpha1 — construção em área (prévia funcional)
 
-- Mapa procedural isométrico 48×48, com grama, lagos e árvores.
-- Rua, zoneamento residencial, comércio, indústria e demolição.
-- Edifícios 3D isométricos simples com crescimento de até 3 níveis, ao lado de ruas.
-- Economia por ciclos: população, empregos, impostos e manutenção das ruas.
-- Toque para construir, arrastar para navegar, gesto de pinça para zoom, controles inferiores responsivos.
-- Botões SALVAR/ABRIR; persistência local versionada e salvamento automático.
-- Versão desktop com mouse, teclas 1–5, S e L.
-- Workflow GitHub Actions para compilar APK **debug** para instalação/testes.
+- Novo **modo PINTAR/MOVER**, alternado pelo terceiro botão superior. **MOVER:** arraste para deslocar o mapa, toque para construir um tile. **PINTAR:** arraste para construir uma rua contínua ou selecionar um retângulo de zonas/demolição.
+- O pincel de **RUA** percorre tiles ortogonalmente conectados, inclusive com gestos diagonais rápidos.
+- **CASAS**, **LOJAS**, **IND.** e **APAGAR** aplicam retângulos de até **16 × 16** tiles por gesto, com prévia verde (disponível) / vermelha (bloqueado), número de tiles e custo.
+- Pagamento **atômico**: se o saldo não cobre os tiles disponíveis, não se aplica construção parcial; tiles bloqueados são ignorados sem custo, tiles já construídos não são cobrados novamente.
+- Conexões viárias desenhadas conforme os quatro vizinhos reais (pontas, retas, curvas, T e cruzamentos) — sprites pixel art finais ainda pendentes.
+- Botão **CENTRAR** para reenquadrar a cidade; edifícios menores e crescimento vertical desacelerado.
+- Pausa, aceleração 1×/2×/4×, ajuda, salvar e abrir continuam acessíveis.
+- Mantém compatibilidade com salvamentos **CVT1/CVT2** das versões anteriores, com CRC32, backup e recuperação.
 
-## Como compilar no GitHub sem abrir Android Studio
+**AVISO:** prévia de 0.2.0, ainda sem atlas de pixel art ou arte final. Testes automáticos e build Android não substituem a validação em celular real.
 
-1. Crie um repositório **novo** e envie o conteúdo desta pasta para ele (não misture com o PixelChess).
-2. No GitHub, vá à aba **Actions** e execute **Compilar APK Android**.
-3. Ao final de uma execução bem-sucedida, abra o run e baixe o artefato `CidadeViva-Android-debug`.
-4. Extraia o ZIP do artefato e instale o APK de teste no Android.
+## Recursos já existentes desde o MVP
 
-O APK **não acompanha este ZIP de código-fonte**: a compilação requer Gradle, Android SDK e dependências libGDX obtidas pela Internet, indisponíveis neste ambiente de geração. Não distribuir o APK debug como versão final na Play Store. Para publicação, será preciso assinar uma build release.
+- Mapa procedural isométrico **48×48** com vegetação e água.
+- Zoneamento residencial, comercial e industrial, expansão simplificada e economia por dias.
+- Gestos de câmera, zoom ancorado e navegação multi-touch.
+- Persistência local e teste de integridade com backup automático.
+- Build Android debug independente e versão desktop Java.
 
-## Compilar num computador
+## Compilar e testar
 
-Necessário Java 17, Android SDK 35, Android Build-Tools 35.0.0 e Gradle 8.9:
+GitHub Actions: **Actions → Compilar APK Android** (artefato `CidadeViva-Android-debug`), ou em computador com Java 17, Android SDK 35, Gradle 8.9:
 
 ```bash
+bash tools/test-core.sh
 gradle :android:assembleDebug
-# Arquivo gerado: android/build/outputs/apk/debug/android-debug.apk
-
-gradle :lwjgl3:run
+# Arquivo em android/build/outputs/apk/debug/
 ```
 
-## Validar as regras sem SDK Android
-
-```bash
-./tools/test-core.sh
-```
-
-## Limites do MVP
-
-Os modelos gráficos são formas geométricas temporárias; sprites pixel-art definitivos, trânsito, serviços públicos, redes elétricas, estrada auto-conectada, sistema de demanda profundo, animações e performance em celulares reais são etapas seguintes. O APK ainda não foi compilado nem testado em dispositivo. Identidade gráfica e mecânicas são próprias, sem reaproveitar assets de TheoTown.
-
-## Atualização 0.1.1 — estabilização Android
-
-- Toques do HUD separados do mapa e seleção de botão confirmada no `touchUp`.
-- Zoom por pinça com ponto ancorado, pan com dois dedos e limites de câmera.
-- Pausa/retomar, velocidades 1×, 2×, 4× e painel AJUDA.
-- Saves CVT2 com CRC32 e backup automático; leitura retrocompatível com CVT1 (v0.1.0).
-- Testes puros Java para seleção isométrica, geometria de câmera, regiões clicáveis, salvamento e compatibilidade.
-- Plano de verificação manual do Android em [QA-ANDROID-0.1.1.md](QA-ANDROID-0.1.1.md).
-
-**Importante:** a compilação CI e os testes Java não substituem a validação em aparelho Android. Issues CV-001 a CV-006 acompanham o encerramento da sprint.
+O APK debug é para testes e não pode ser distribuído como release da Play Store sem assinatura release. Confira [QA-ANDROID-0.2.0-alpha1.md](QA-ANDROID-0.2.0-alpha1.md) para o teste manual.

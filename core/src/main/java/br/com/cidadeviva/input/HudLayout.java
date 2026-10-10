@@ -2,7 +2,7 @@ package br.com.cidadeviva.input;
 
 /** Regions in top-left screen coordinates, no dependency on libGDX. */
 public final class HudLayout {
-    public static final int ACTIONS = 5;
+    public static final int ACTIONS = 6;
     public static final int TOOLS = 5;
     public static final float TOP_HEIGHT = 121f;
     public static final float BOTTOM_HEIGHT = 93f;

@@ -1,6 +1,9 @@
 package br.com.cidadeviva.sim;
 
 import java.util.Random;
+import java.util.List;
+import java.util.LinkedHashSet;
+import br.com.cidadeviva.input.BuildStroke;
 
 /** Estado e regras do jogo: sem dependências de libGDX, testável com Java puro. */
 public final class City {
@@ -73,6 +76,60 @@ public final class City {
         return "Construído";
     }
 
+    /** A preview and the batch-commit use exactly the same eligibility rules. */
+    public boolean canBuild(int x,int y,TileType type) {
+        if (!inBounds(x,y)) return false;
+        TileType current=tiles[x][y].type;
+        if (type==TileType.GRASS) return current!=TileType.GRASS;
+        if (type!=TileType.ROAD && !type.isZone()) return false;
+        return current==TileType.GRASS || current==TileType.FOREST;
+    }
+
+    public int roadMask(int x,int y) {
+        if (!isRoad(x,y)) return 0;
+        int mask=0;
+        if (isRoad(x+1,y)) mask |= 1; // southeast
+        if (isRoad(x-1,y)) mask |= 2; // northwest
+        if (isRoad(x,y+1)) mask |= 4; // southwest
+        if (isRoad(x,y-1)) mask |= 8; // northeast
+        return mask;
+    }
+
+    public static final class BuildResult {
+        public final int built,ignored,cost;
+        public final boolean insufficientFunds;
+        BuildResult(int built,int ignored,int cost,boolean insufficientFunds) {
+            this.built=built;this.ignored=ignored;this.cost=cost;
+            this.insufficientFunds=insufficientFunds;
+        }
+        public String feedback() {
+            if (insufficientFunds) return "Saldo insuficiente: R$ "+cost;
+            if (built==0) return "Nenhuma celula disponivel";
+            return built+" celulas | R$ "+cost+(ignored>0?" | "+ignored+" ignoradas":"");
+        }
+    }
+
+    public BuildResult preview(List<BuildStroke.Cell> targets,TileType type) {
+        LinkedHashSet<BuildStroke.Cell> unique=new LinkedHashSet<>(targets);
+        int valid=0;
+        for (BuildStroke.Cell cell:unique)
+            if (canBuild(cell.x,cell.y,type)) valid++;
+        long estimated=(long)valid * cost(type);
+        return new BuildResult(valid,unique.size()-valid,(int)Math.min(Integer.MAX_VALUE,estimated),estimated>money);
+    }
+
+    /** Atomic payment for multi-tile gestures; blocked tiles are skipped for free. */
+    public BuildResult buildArea(List<BuildStroke.Cell> targets,TileType type) {
+        BuildResult estimate=preview(targets,type);
+        if (estimate.insufficientFunds || estimate.built==0) return estimate;
+        // Re-evaluate cells only after affordability, keeping this action all-or-nothing.
+        for (BuildStroke.Cell cell:new LinkedHashSet<>(targets)) {
+            if (canBuild(cell.x,cell.y,type)) tiles[cell.x][cell.y]=new Tile(type);
+        }
+        money-=estimate.cost;
+        return estimate;
+    }
+
     public boolean hasRoad(int x,int y) {
         return (isRoad(x+1,y) || isRoad(x-1,y) || isRoad(x,y+1) || isRoad(x,y-1));
     }
@@ -115,7 +172,7 @@ public final class City {
             Tile t = tiles[x][y];
             if (!t.type.isZone() || !hasRoad(x,y)) continue;
             if (t.level == 0 && random.nextFloat() < 0.18f) t.level=1;
-            else if (t.level > 0 && t.level < 3 && random.nextFloat() < 0.025f) t.level++;
+            else if (t.level > 0 && t.level < 3 && random.nextFloat() < (t.level==1?0.010f:0.003f)) t.level++;
         }
     }
 
