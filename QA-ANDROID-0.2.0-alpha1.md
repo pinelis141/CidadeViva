@@ -4,7 +4,7 @@
 
 ## Testes principais no celular
 
-- [ ] Instalar a atualização sobre a v0.1.1 e confirmar que a cidade antiga continua intacta; abrir novamente após fechar totalmente o aplicativo.
+- [ ] Instalar **Cidade Viva Teste** ao lado da v0.1.1 (sem desinstalar o app antigo). Confirmar que os dois aplicativos coexistem e a v0.1.1 mantém seu progresso antigo. A versão Teste começa com cidade independente.
 - [ ] Verificar que o título indica `0.2.0a1` e que há seis ações superiores: PAUSA, velocidade, MOVER/PINTAR, AJUDA, SALVAR e ABRIR.
 - [ ] No modo MOVER, deslizar um dedo **navega**, toque curto **constrói apenas um tile**. Duas mãos/duas pontas de dedo fazem pan e zoom, sem construir.
 - [ ] Tocar PINTAR e selecionar RUA. Arrastar na diagonal cria uma sequência **conectada** de ruas; o custo corresponde aos tiles válidos sem duplicações.
@@ -23,7 +23,7 @@
 - [ ] Dia e população evoluem, botão pausa interrompe avanço de dia; velocidade acelera.
 - [ ] Nenhum botão é acionado após arrastar sobre seu retângulo; não há construções ao tocar no HUD.
 - [ ] Não há queda brusca de FPS em gesto de retângulo 16×16.
-- [ ] Compatibilidade com save anterior v0.1.1, inclusive recuperação do backup quando aplicável.
+- [ ] Testar arquivo CVT1/CVT2 de uma instalação de teste compatível, quando disponível; Android não migra automaticamente arquivos privados entre IDs de aplicativos diferentes.
 
 ## Limites conhecidos
 
