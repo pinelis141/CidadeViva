@@ -1,4 +1,4 @@
-# Cidade Viva — demanda e economia, 0.3.0-alpha1
+# Cidade Viva — demanda e economia, 0.3.0-alpha2
 
 O sistema foi implementado em Java puro, com cálculos independentes da interface libGDX. Trata-se de uma economia inicial simplificada, não de uma simulação integral de mercado de trabalho.
 
@@ -20,15 +20,19 @@ Demandas são **escores de 5 a 95** (não probabilidades ou porcentagens da popu
 | Comercial | `42 + (moradores - 2 × empregos comerciais) / 5 - 9 × lotes comerciais vazios` |
 | Industrial | `46 + (moradores - empregos) / 3 - 10 × lotes industriais vazios` |
 
-Se a demanda for inferior a **24**, a zona não cresce. Qualquer crescimento também exige uma rua em um dos quatro lados do lote. A chance por dia cai de acordo com o nível, para evitar crescimento vertical excessivo. O sorteio é derivado do dia e das coordenadas, portanto reabrir uma cidade não muda aleatoriamente o futuro imediato. A demanda baixa **não** rebaixa prédios já construídos nesta etapa.
+O imposto de cada categoria acrescenta à fórmula o termo `− 3 × (alíquota − 10)`. Assim, 10% mantém a demanda do modelo anterior; impostos maiores reduzem demanda, menores aumentam, sempre limitada a 5..95. As alíquotas vão de **5% a 20%** em passos de 1% e são específicas de cada cidade.
+
+Se a demanda for inferior a **24**, a zona não cresce. Qualquer crescimento também exige uma rua em um dos quatro lados do lote. A chance por dia cai de acordo com o nível, para evitar crescimento vertical excessivo. O sorteio é derivado do dia e das coordenadas, portanto reabrir uma cidade não muda aleatoriamente o futuro imediato. ### Abandono gradual
+
+Quando a demanda de um setor fica **abaixo de 20** por **12 dias consecutivos**, cada imóvel construído do setor corre um risco diário pequeno de perder um nível (mínimo 0). Para um lote sem rua adjacente, há também risco de abandono, com início apenas após a fase inicial da cidade. Rebaixamento não apaga o zoneamento: o terreno poderá voltar a crescer quando as condições melhorarem. A decisão por dia e coordenada é determinística, e a sequência de dias fracos é salva para evitar reiniciar a contagem ao fechar o app.
 
 ## Receitas e despesas
 
 | Linha | Regra diária |
 |---|---|
-| Receita residencial | `moradores × 3 / 5` (divisão inteira) |
-| Receita comercial | `empregos comerciais` |
-| Receita industrial | `empregos industriais × 6 / 5` (divisão inteira) |
+| Receita residencial | `moradores × 3 × taxa residencial / 50` |
+| Receita comercial | `empregos comerciais × taxa comercial / 10` |
+| Receita industrial | `empregos industriais × 6 × taxa industrial / 50` |
 | Manutenção de ruas | `2 × tiles com estrada` |
 | Manutenção dos lotes | `1 × tiles zoneados R/C/I` |
 
@@ -40,12 +44,16 @@ Se a demanda for inferior a **24**, a zona não cresce. Qualquer crescimento tam
 
 ## Interface
 
+O atalho **ECON** no canto superior direito abre um painel modal com três alíquotas ajustáveis usando + e −, demanda e tempo de demanda fraca por setor, receita detalhada, despesas e saldo diário. Enquanto o painel está aberto, a simulação fica suspensa, e os toques no painel não constroem no mapa. Cada ajuste é persistido no espaço ativo.
+
 O HUD exibe a pressão **R/C/I com três barras** (verde/azul/laranja), receita, manutenção, saldo por dia, desemprego e vagas. Tocar em um lote existente mostra categoria, nível, acesso viário e, quando aplicável, um alerta de baixa demanda.
 
-## Compatibilidade
+## Compatibilidade e salvamentos
 
-Nenhum campo novo foi adicionado ao formato dos salvamentos. Demanda e orçamento são reconstruídos a partir dos tiles e níveis já existentes. As três cidades e backups da Alpha 4 permanecem separados. A partir da atualização, suas **regras de crescimento e orçamento mudam**, mas nenhuma construção é apagada. O campo de saldo diário do save antigo pode refletir a regra anterior até o próximo avanço de dia.
+A versão Alpha 2 usa o formato **CVT3**, com CRC32 e os mesmos 48×48 terrenos, adicionando as três alíquotas e três contadores de dias fracos. **Leitura de CVT1 e CVT2 é mantida**; arquivos antigos carregam impostos de 10% e contagem zero. Os três slots continuam independentes, e a gravação mantém `.tmp`, validação antes da troca e `.bak` para recuperação.
+
+**Importante:** depois que a Alpha 2 salvar uma cidade como CVT3, um APK antigo pode não conseguir abri-la. Não instale versões anteriores esperando abrir saves da Alpha 2. A atualização para frente não apaga cidades existentes.
 
 ## O que ainda falta
 
-Impostos configuráveis, felicidade, abandono e reconstrução, mercado de mercadorias, redes de transporte, serviços públicos e população por faixa etária são tarefas futuras. Também permanece pendente o teste em celular real de longa duração e da troca entre cidades após atualização.
+Felicidade, alíquotas de serviços, mercado de mercadorias, redes de transporte, serviços públicos e população por faixa etária são tarefas futuras. Também permanece pendente o teste em celular real de longa duração e da troca entre cidades após atualização.

@@ -1,12 +1,21 @@
 # Cidade Viva — Java/libGDX Android
 
-Versão em desenvolvimento: **0.3.0-alpha1**.
+Versão em desenvolvimento: **0.3.0-alpha2**.
+
+### Novidades da Alpha 2
+
+- Atalho **ECON** no topo direito abre o orçamento detalhado.
+- Alíquotas residencial, comercial e industrial entre **5% e 20%**, com botões +/−. Cada cidade guarda suas próprias taxas.
+- Impostos maiores aumentam a receita e reduzem a demanda R/C/I; taxas menores fazem o inverso.
+- **Abandono gradual:** demanda persistentemente baixa pode reduzir o nível de um edifício, sem eliminar o terreno zoneado.
+- **Formato CVT3** com CRC32 armazena taxas e tempo de demanda fraca. Lê CVT1/CVT2 antigos e preserva os 3 slots e backups; versões anteriores não leem os saves CVT3.
+- Teste Android: [QA-ANDROID-0.3.0-alpha2.md](QA-ANDROID-0.3.0-alpha2.md).
 
 ### Economia desta versão
 
 Demanda residencial, comercial e industrial no HUD (R/C/I), crescimento condicionado a demanda + rua próxima, vagas e desemprego, receita/ manutenção e saldo por dia. O simulador permanece em Java puro; informações completas em [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md). Testes físicos: [QA-ANDROID-0.3.0-alpha1.md](QA-ANDROID-0.3.0-alpha1.md).
 
-**Saves preservados:** a estrutura CVT1/CVT2 e os três slots da Alpha 4 continuam compatíveis; novas regras econômicas passam a valer na simulação após atualizar.
+**Migração segura:** CVT1/CVT2 são lidos e convertidos para CVT3 no próximo salvamento. Três slots e backups continuam separados. Não faça downgrade do aplicativo depois de salvar no CVT3.
 
 # Cidade Viva — Java / libGDX / Android
 

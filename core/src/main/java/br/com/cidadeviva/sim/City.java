@@ -13,6 +13,10 @@ public final class City {
     private int money = INITIAL_MONEY;
     private int day = 1;
     private int lastIncome = 0;
+    // Per-city settings, persisted in CVT3. Existing CVT1/CVT2 cities default to 10%.
+    private final int[] taxRates = {10, 10, 10};
+    // Consecutive weak-demand days for each zone category; limits one-day collapses.
+    private final int[] lowDemandDays = {0, 0, 0};
 
     public City() { this(0); }
 
@@ -70,6 +74,19 @@ public final class City {
     public int money() { return money; }
     public int day() { return day; }
     public int lastIncome() { return lastIncome; }
+
+    private static int zoneIndex(TileType type) {
+        if (type==TileType.RESIDENTIAL) return 0;
+        if (type==TileType.COMMERCIAL) return 1;
+        if (type==TileType.INDUSTRIAL) return 2;
+        throw new IllegalArgumentException("Apenas zonas R/C/I possuem aliquota");
+    }
+    public int taxRate(TileType type) { return taxRates[zoneIndex(type)]; }
+    public void setTaxRate(TileType type,int percent) {
+        if (percent<5 || percent>20) throw new IllegalArgumentException("Aliquota deve ser 5% a 20%");
+        taxRates[zoneIndex(type)]=percent;
+    }
+    public int lowDemandDays(TileType type) {return lowDemandDays[zoneIndex(type)];}
 
     public int cost(TileType type) {
         switch (type) {
@@ -225,15 +242,29 @@ public final class City {
     public void nextDay() {
         CityEconomy report = economy();
         day++;
+        final TileType[] categories={TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL};
+        for(int i=0;i<categories.length;i++) {
+            if(report.demand(categories[i])<20)lowDemandDays[i]=Math.min(1000000,lowDemandDays[i]+1);
+            else lowDemandDays[i]=0;
+        }
         lastIncome = report.net;
         // Legacy saves store a nonnegative balance. A deficit consumes the treasury
         // down to zero rather than writing an incompatible negative money field.
         money = (int)Math.max(0L,Math.min(Integer.MAX_VALUE,(long)money + report.net));
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++) {
             Tile t = tiles[x][y];
-            if (!t.type.isZone() || !hasRoad(x,y)) continue;
+            if (!t.type.isZone()) continue;
+            boolean accessible=hasRoad(x,y);
             int demand=report.demand(t.type);
-            if (demand < 24) continue;
+            // A sustained lack of demand or road access can cause gradual abandonment.
+            // No building is removed in a single day just because demand dipped.
+            if (t.level>0 && ((!accessible && day>=14) ||
+                (accessible && demand<20 && lowDemandDays(t.type)>=12))) {
+                float declineChance=!accessible?0.045f:0.02f+(20-demand)*0.0015f;
+                if (growthRoll(day,x,y,17)<declineChance) t.level--;
+                continue;
+            }
+            if (!accessible || demand<24) continue;
             // Level 0 can grow readily; taller buildings require sustained demand.
             float rate=t.level==0?0.018f + demand*0.0017f:
                 t.level==1?0.001f + demand*0.00028f:
@@ -244,10 +275,14 @@ public final class City {
 
     /** Chamado apenas por CityPersistence depois de validar o arquivo inteiro. */
     void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome) {
+        restore(incoming,restoredMoney,restoredDay,restoredIncome,new int[]{10,10,10},new int[]{0,0,0});
+    }
+    void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays) {
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];
         money = restoredMoney;
         day = restoredDay;
         lastIncome = restoredIncome;
+        for(int i=0;i<3;i++) {taxRates[i]=rates[i];lowDemandDays[i]=weakDays[i];}
     }
 }

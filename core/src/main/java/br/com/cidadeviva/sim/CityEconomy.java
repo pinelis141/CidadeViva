@@ -27,11 +27,13 @@ public final class CityEconomy {
     public final int expenses;
     public final int net;
     public final int unserved;
+    public final int residentialTaxRate, commercialTaxRate, industrialTaxRate;
 
     private CityEconomy(int population, int jobs, int commercialJobs, int industrialJobs,
                         int residentialDemand, int commercialDemand, int industrialDemand,
                         int taxResidential, int taxCommercial, int taxIndustrial,
-                        int roadMaintenance, int zoneMaintenance, int unserved) {
+                        int roadMaintenance, int zoneMaintenance, int unserved,
+                        int residentialTaxRate,int commercialTaxRate,int industrialTaxRate) {
         this.population = population;
         this.jobs = jobs;
         this.commercialJobs = commercialJobs;
@@ -51,6 +53,9 @@ public final class CityEconomy {
         this.expenses = roadMaintenance + zoneMaintenance;
         this.net = grossRevenue - expenses;
         this.unserved = unserved;
+        this.residentialTaxRate=residentialTaxRate;
+        this.commercialTaxRate=commercialTaxRate;
+        this.industrialTaxRate=industrialTaxRate;
     }
 
     public int demand(TileType type) {
@@ -98,17 +103,22 @@ public final class CityEconomy {
         int jobs = commerce + industry;
         // Pressure responds to underemployment, unfilled employment capacity and
         // undeveloped zoned land. It prevents limitless exponential construction.
-        int residential = clamp(42 + (jobs - population) / 3 - unusedResidential * 8, 5, 95);
-        int commercial = clamp(42 + (population - commerce * 2) / 5 - unusedCommercial * 9, 5, 95);
-        int industrial = clamp(46 + (population - jobs) / 3 - unusedIndustrial * 10, 5, 95);
-        int taxR = population * 3 / 5; // 0.60 per resident/day
-        int taxC = commerce;             // 1.00 per commercial job/day
-        int taxI = industry * 6 / 5;    // 1.20 per industrial job/day
+        int rateR=city.taxRate(TileType.RESIDENTIAL);
+        int rateC=city.taxRate(TileType.COMMERCIAL);
+        int rateI=city.taxRate(TileType.INDUSTRIAL);
+        // A 10% tax matches the prior version; each extra percentage point
+        // reduces investment appetite by three demand points.
+        int residential = clamp(42 + (jobs - population) / 3 - unusedResidential * 8 - 3*(rateR-10), 5, 95);
+        int commercial = clamp(42 + (population - commerce * 2) / 5 - unusedCommercial * 9 - 3*(rateC-10), 5, 95);
+        int industrial = clamp(46 + (population - jobs) / 3 - unusedIndustrial * 10 - 3*(rateI-10), 5, 95);
+        int taxR = (int)((long)population * 3 * rateR / 50); // base 0.6 at 10%
+        int taxC = (int)((long)commerce * rateC / 10); // base 1.0 at 10%
+        int taxI = (int)((long)industry * 6 * rateI / 50); // base 1.2 at 10%
         int roadCost = roads * 2;
         int zoneCost = zoneCount;
         return new CityEconomy(population, jobs, commerce, industry,
             residential, commercial, industrial, taxR, taxC, taxI,
-            roadCost, zoneCost, unserved);
+            roadCost, zoneCost, unserved,rateR,rateC,rateI);
     }
 
     private static int clamp(int value, int low, int high) {

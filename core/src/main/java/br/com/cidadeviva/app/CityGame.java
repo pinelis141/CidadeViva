@@ -59,6 +59,7 @@ public final class CityGame extends ApplicationAdapter {
     private CitySlots saves;
     private boolean savesReady = false;
     private boolean slotsVisible = false;
+    private boolean economyVisible = false;
     private int selectedSlot = -1;
     private CitySlots.SlotInfo[] slotInfo = new CitySlots.SlotInfo[CitySlots.COUNT];
     private TileType selected = TileType.ROAD;
@@ -85,6 +86,7 @@ public final class CityGame extends ApplicationAdapter {
     private boolean suppressTap;
     private int pendingAction = -1, pendingTool = -1;
     private boolean pendingRecenter = false;
+    private int pendingQuickAction = -1;
     private boolean secondPointerOnHud = false;
 
     private static final Map<Integer,Color> PALETTE = new HashMap<>();
@@ -139,7 +141,7 @@ public final class CityGame extends ApplicationAdapter {
     @Override public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
         toastClock -= delta;
-        if (!simulationPaused && savesReady && !slotsVisible) {
+        if (!simulationPaused && savesReady && !slotsVisible && !economyVisible) {
             simClock += delta * simulationSpeed;
             while (simClock >= 4f) {
                 simClock -= 4f;
@@ -389,10 +391,11 @@ public final class CityGame extends ApplicationAdapter {
             shapes.rect(bx+2*u,17*u,bw-4*u,84*u);
             drawToolIcon(i,bx+bw*0.5f,75*u,u);
         }
-        // Separate quick-access controls for the save-slot screen and recentering.
+        // Three top shortcuts, all distinct from the simulation HUD.
         shapes.setColor(rgb(51,72,73));
-        shapes.rect(w-244*u,h-48*u,124*u,40*u);
-        shapes.rect(w-117*u,h-48*u,112*u,40*u);
+        shapes.rect(w-357*u,h-48*u,109*u,40*u); // economy
+        shapes.rect(w-244*u,h-48*u,124*u,40*u); // cities
+        shapes.rect(w-117*u,h-48*u,112*u,40*u); // center
         for (int i=0;i<HudLayout.ACTIONS;i++) {
             float bx=i*w/HudLayout.ACTIONS+3*u;
             float by=h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT)*u;
@@ -419,12 +422,13 @@ public final class CityGame extends ApplicationAdapter {
             shapes.rect(15*u,h/2f-115*u,w-30*u,230*u);
         }
         if (slotsVisible) drawSlotsOverlay(u);
+        if (economyVisible) drawEconomyOverlay(u,economy);
         shapes.end();
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         font.setColor(rgb(235,243,227));
         font.getData().setScale(1.20f*u);
-        font.draw(batch,"CIDADE VIVA  0.3.0a1",12*u,h-19*u);
+        font.draw(batch,"CIDADE VIVA  0.3.0a2",12*u,h-19*u);
         font.getData().setScale(1.10f*u);
         font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
         font.draw(batch,"EMP "+economy.jobs+" | DESEMP "+economy.unemployed+
@@ -444,6 +448,8 @@ public final class CityGame extends ApplicationAdapter {
         font.setColor(rgb(243,226,158));
         font.getData().setScale(0.90f*u);
         font.getData().setScale(1.00f*u);
+        glyph.setText(font,"ECON");
+        font.draw(batch,"ECON",w-302*u-glyph.width*0.5f,h-22*u);
         glyph.setText(font,"CIDADES");
         font.draw(batch,"CIDADES",w-182*u-glyph.width*0.5f,h-22*u);
         glyph.setText(font,"CENTRAR");
@@ -488,8 +494,93 @@ public final class CityGame extends ApplicationAdapter {
             font.draw(batch,"Toque na tela para fechar",x,y-182*u);
         }
         if (slotsVisible) drawSlotsText(u);
+        if (economyVisible) drawEconomyText(u,economy);
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private float econW(float u) {return Math.min(w-24*u,560*u);}
+    private float econX(float u) {return (w-econW(u))*0.5f;}
+    private float econY(float u) {return (h-558*u)*0.5f;}
+    private static final TileType[] TAX_TYPES = {
+        TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL
+    };
+    private static final String[] TAX_NAMES = {"RESIDENCIAL", "COMERCIAL", "INDUSTRIAL"};
+
+    private void drawEconomyOverlay(float u, CityEconomy report) {
+        float x=econX(u),y=econY(u),ww=econW(u);
+        shapes.setColor(0.01f,0.03f,0.04f,0.89f);
+        shapes.rect(0,0,w,h);
+        shapes.setColor(rgb(26,46,53));
+        shapes.rect(x,y,ww,558*u);
+        shapes.setColor(rgb(112,173,134));
+        shapes.rect(x,y+554*u,ww,4*u);
+        for(int i=0;i<3;i++) {
+            float cy=y+(356-i*83)*u;
+            shapes.setColor(rgb(43,64,67));
+            shapes.rect(x+14*u,cy,ww-28*u,73*u);
+            shapes.setColor(rgb(74,104,102));
+            shapes.rect(x+ww-139*u,cy+13*u,52*u,48*u);
+            shapes.rect(x+ww-73*u,cy+13*u,52*u,48*u);
+        }
+        shapes.setColor(rgb(58,107,83));
+        shapes.rect(x+16*u,y+13*u,ww-32*u,47*u);
+    }
+    private void drawEconomyText(float u,CityEconomy report) {
+        float x=econX(u),y=econY(u),ww=econW(u);
+        font.setColor(rgb(234,242,215));
+        font.getData().setScale(1.22f*u);
+        font.draw(batch,"ECONOMIA E IMPOSTOS",x+21*u,y+518*u);
+        font.getData().setScale(0.90f*u);
+        font.draw(batch,"Impostos altos aumentam caixa, mas reduzem demanda.",x+21*u,y+484*u);
+        for(int i=0;i<3;i++) {
+            float cy=y+(356-i*83)*u;
+            TileType type=TAX_TYPES[i];
+            int demand=report.demand(type),rate=city.taxRate(type);
+            font.setColor(rgb(234,242,215));
+            font.getData().setScale(0.95f*u);
+            font.draw(batch,TAX_NAMES[i]+"  "+rate+"%",x+27*u,cy+51*u);
+            font.setColor(rgb(188,218,199));
+            font.getData().setScale(0.85f*u);
+            font.draw(batch,"Demanda: "+demand+"/100  |  "+city.lowDemandDays(type)+" dias fracos",x+27*u,cy+24*u);
+            font.setColor(rgb(244,238,196));
+            font.getData().setScale(1.45f*u);
+            font.draw(batch,"-",x+ww-117*u,cy+46*u);
+            font.draw(batch,"+",x+ww-54*u,cy+46*u);
+        }
+        font.setColor(rgb(240,239,216));
+        font.getData().setScale(0.92f*u);
+        font.draw(batch,"RECEITA  R$ "+report.grossRevenue+" / dia",x+22*u,y+161*u);
+        font.draw(batch,"Moradias "+report.taxResidential+"  Lojas "+report.taxCommercial+
+            "  Industrias "+report.taxIndustrial,x+22*u,y+139*u);
+        font.draw(batch,"DESPESAS  R$ "+report.expenses+" / dia",x+22*u,y+115*u);
+        font.draw(batch,"Ruas "+report.roadMaintenance+"  Terrenos "+report.zoneMaintenance,x+22*u,y+93*u);
+        font.setColor(report.net>=0?rgb(162,228,173):rgb(251,163,148));
+        font.getData().setScale(1.01f*u);
+        font.draw(batch,"SALDO  "+(report.net>=0?"+":"")+report.net+" / dia",x+22*u,y+73*u);
+        font.setColor(rgb(235,243,223));
+        font.getData().setScale(1.06f*u);
+        font.draw(batch,"FECHAR",x+ww*0.5f-34*u,y+43*u);
+    }
+    private void economyTap(int sx,int sy) {
+        float u=uiScale, x=econX(u),y=econY(u),ww=econW(u);
+        float py=h-sy;
+        if(sx<x || sx>x+ww || py<y || py>y+558*u) {economyVisible=false;return;}
+        if(py<=y+61*u) {economyVisible=false;return;}
+        for(int i=0;i<3;i++) {
+            float rowY=y+(356-i*83)*u;
+            if(py<rowY+13*u || py>rowY+61*u)continue;
+            int change=0;
+            if(sx>=x+ww-139*u && sx<=x+ww-87*u)change=-1;
+            if(sx>=x+ww-73*u && sx<=x+ww-21*u)change=1;
+            if(change!=0) {
+                TileType kind=TAX_TYPES[i];
+                int next=Math.max(5,Math.min(20,city.taxRate(kind)+change));
+                city.setTaxRate(kind,next);
+                save(false); // persist this city's choice immediately in CVT3
+            }
+            return;
+        }
     }
 
     private float slotsW(float u) {return Math.min(w-24*u,540*u);}
@@ -501,6 +592,7 @@ public final class CityGame extends ApplicationAdapter {
         for(int i=0;i<CitySlots.COUNT;i++)slotInfo[i]=saves.inspect(i+1);
     }
     private void openSlots() {
+        economyVisible=false;
         if (!savesReady) simulationPaused=true;
         selectedSlot=saves.active();
         refreshSlotInfo();
@@ -594,6 +686,7 @@ public final class CityGame extends ApplicationAdapter {
                 city=opened.city;
                 savesReady=true;
                 slotsVisible=false;
+                economyVisible=false;
                 simulationPaused=false;
                 simClock=0;
                 recenter();
@@ -762,7 +855,7 @@ public final class CityGame extends ApplicationAdapter {
 
     private final class Controls extends InputAdapter {
         @Override public boolean touchDown(int screenX,int screenY,int pointer,int button) {
-            if (slotsVisible) {
+            if (slotsVisible || economyVisible) {
                 if(pointer==0) { down[0]=true;px[0]=screenX;py[0]=screenY; }
                 return true;
             }
@@ -780,8 +873,8 @@ public final class CityGame extends ApplicationAdapter {
                 pendingAction=-1;
                 pendingTool=-1;
                 startedOnUi=helpVisible || HudLayout.isHud(screenX,screenY,w,h,uiScale);
-                pendingRecenter=!helpVisible && screenX>=w-117*uiScale &&
-                    screenY>=0 && screenY<=55*uiScale;
+                pendingQuickAction=!helpVisible && screenY<=55*uiScale
+                    ? HudLayout.quickActionAt(screenX,screenY,w,uiScale) : -1;
                 brushCells.clear();
                 brushGesture=false;
                 if (!startedOnUi && paintMode) startStroke(screenX,screenY);
@@ -806,7 +899,7 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchDragged(int screenX,int screenY,int pointer) {
-            if (slotsVisible)return true;
+            if (slotsVisible || economyVisible)return true;
             if (pointer>1 || !down[pointer])return false;
             float prevX=px[pointer], prevY=py[pointer];
             float oldMidX=(px[0]+px[1])*0.5f,oldMidY=(py[0]+py[1])*0.5f;
@@ -838,11 +931,13 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchUp(int screenX,int screenY,int pointer,int button) {
-            if(slotsVisible) {
+            if(slotsVisible || economyVisible) {
                 if(pointer==0 && down[0]) {
                     down[0]=false;
-                    if(Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale)
-                        slotsTap(screenX,screenY);
+                    if(Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale) {
+                        if(slotsVisible)slotsTap(screenX,screenY);
+                        else economyTap(screenX,screenY);
+                    }
                 }
                 return true;
             }
@@ -855,10 +950,12 @@ public final class CityGame extends ApplicationAdapter {
                 } else if (startedOnUi && !suppressTap && !moving) {
                     int action=HudLayout.actionAt(screenX,screenY,w,uiScale);
                     int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
-                    if(screenY<=55*uiScale && screenX>=w-244*uiScale &&
-                       screenX<w-120*uiScale) openSlots();
-                    else if (pendingRecenter && screenX>=w-117*uiScale && screenY<=55*uiScale) recenter();
-                    else if (action>=0 && action==pendingAction) activateAction(action);
+                    int quick=HudLayout.quickActionAt(screenX,screenY,w,uiScale);
+                    if(quick>=0 && quick==pendingQuickAction) {
+                        if(quick==0) {economyVisible=true;brushCells.clear();}
+                        else if(quick==1) openSlots();
+                        else recenter();
+                    } else if (action>=0 && action==pendingAction) activateAction(action);
                     else if (tool>=0 && tool==pendingTool) {
                         selected=tools[tool];
                         hoverX=-1;hoverY=-1;
@@ -872,6 +969,7 @@ public final class CityGame extends ApplicationAdapter {
                 }
                 pendingAction=-1;pendingTool=-1;
                 pendingRecenter=false;
+                pendingQuickAction=-1;
                 startedOnUi=false;
                 brushCells.clear();
                 brushGesture=false;
@@ -888,11 +986,13 @@ public final class CityGame extends ApplicationAdapter {
         }
         @Override public boolean keyDown(int keycode) {
             if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK) {
+                if(economyVisible) {economyVisible=false;return true;}
                 if(slotsVisible && savesReady)slotsVisible=false;
                 else openSlots();
                 return true;
             }
-            if(slotsVisible)return true;
+            if(slotsVisible || economyVisible)return true;
+            if(keycode==Input.Keys.E) {economyVisible=true;return true;}
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
             if(keycode==Input.Keys.SPACE)activateAction(0);

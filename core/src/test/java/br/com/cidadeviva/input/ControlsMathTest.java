@@ -23,6 +23,12 @@ public final class ControlsMathTest {
                 ok(HudLayout.toolAt(cx,h-50*u,w,h,u)==i,"ferramenta central "+i);
                 ok(HudLayout.isHud(cx,h-50*u,w,h,u),"faixa inferior protegida");
             }
+            for(int k=0;k<3;k++) {
+                float bx=w-(k==0?302:k==1?182:61)*u;
+                ok(HudLayout.quickActionAt(bx,25*u,w,u)==k,"acao superior "+k);
+                ok(HudLayout.isHud(bx,25*u,w,h,u),"acao superior protegida");
+            }
+            ok(HudLayout.quickActionAt(10*u,25*u,w,u)==-1,"estatisticas sem botao lateral");
             ok(HudLayout.actionAt(-2,(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT/2f)*u,w,u)==-1,"nunca selecionar fora à esquerda");
             ok(HudLayout.toolAt(w+3,h-50*u,w,h,u)==-1,"nunca selecionar fora à direita");
             ok(HudLayout.actionAt(w*0.5f,40*u,w,u)==-1,"clique na estatística sem ação");
