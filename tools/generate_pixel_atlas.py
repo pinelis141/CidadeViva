@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Reproducible ORIGINAL game-ready transparent pixel-art sprites.
+Uses Pillow only when generating assets; no runtime Python dependency.
+Each sprite uses a fixed 72x128 cell with a bottom-centered isometric footprint.
+"""
+from PIL import Image, ImageDraw
+from pathlib import Path
+import random
+
+CW, CH, COLS = 72, 128, 8
+sprites=[]
+
+def rgba(c):return tuple(c) if isinstance(c,tuple) else c
+
+def p(draw, pts, fill, outline=None):
+    draw.polygon(pts, fill=fill)
+    if outline:draw.line(pts+[pts[0]], fill=outline, width=1, joint='curve')
+
+def diamond(d,cx,cy,hw,hh,fill,border=None):
+    p(d,[(cx,cy-hh),(cx+hw,cy),(cx,cy+hh),(cx-hw,cy)],fill,border)
+
+def base(kind, seed):
+    im=Image.new('RGBA',(CW,CH));d=ImageDraw.Draw(im)
+    rng=random.Random(seed*1517+12)
+    grass=[('#8cab69','#628d57'),('#86a765','#608750'),('#91ae71','#6a9459')][seed%3]
+    if kind=='grass':
+        diamond(d,36,112,32,16,grass[0],grass[1])
+        for i in range(15):
+            x=rng.randrange(13,59);y=rng.randrange(103,122)
+            if abs(x-36)*0.5+abs(y-112)>14:continue
+            c=rng.choice(['#769c5a','#9db979','#bdd08d','#628f58'])
+            d.rectangle((x,y,x+1,y+1),fill=c)
+        for i in range(2):
+            x=rng.randrange(20,52);y=rng.randrange(108,118)
+            if abs(x-36)*.5+abs(y-112)>12:continue
+            d.line([(x,y),(x+1,y-2)],fill='#c4cf84',width=1)
+    elif kind=='water':
+        diamond(d,36,112,32,16,['#3f92b0','#478da7'][seed%2],'#356a8b')
+        for i in range(5):
+            x=rng.randrange(17,55);y=rng.randrange(105,118)
+            if abs(x-36)*.5+abs(y-112)>11:continue
+            d.line((x,y,x+5,y-2),fill=['#82c1c9','#76b8c7','#a5d7d5'][i%3],width=1)
+    elif kind=='zone':
+        colors=[('#668d6a','#53775a','#d9cd92'),('#709bb0','#4c758b','#b3e8f0'),('#c8a173','#977750','#dcd29b')]
+        top,edge,accent=colors[seed]
+        diamond(d,36,112,32,16,top,edge)
+        # Fine survey stakes, subtle without obscuring the planned zone.
+        for x,y in [(23,104),(49,104),(23,120),(49,120)]:
+            d.rectangle((x,y,x+2,y+2),fill=accent)
+        d.line([(23,112),(36,104),(49,112)], fill=accent,width=1)
+    elif kind=='road':
+        mask=seed
+        diamond(d,36,112,32,16,'#555a59','#3d4746')
+        d.line([(8,113),(36,99),(64,113)],fill='#67716c',width=1)
+        # neighbour bits map to four diamond diagonal radii.
+        dirs=[(16,8),(-16,-8),(-16,8),(16,-8)]
+        if mask==0:
+            diamond(d,36,112,5,3,'#bea96b')
+        for bit,(x,y) in enumerate(dirs):
+            if mask&(1<<bit):
+                d.line((36+int(.34*x),112+int(.34*y),36+int(.72*x),112+int(.72*y)), fill='#e0c47c',width=2)
+        d.rectangle((35,111,36,112),fill='#a3aba3')
+    return im
+
+def add(im): sprites.append(im)
+for i in range(3):add(base('grass',i))                  # 0-2
+for i in range(2):add(base('water',i))                  # 3-4
+for i in range(3):add(base('zone',i))                   # 5-7
+for i in range(16):add(base('road',i))                  # 8-23
+
+def tree(variant):
+    im=base('grass',variant);d=ImageDraw.Draw(im)
+    dx=[-3,1,2][variant];x=36+dx
+    d.rectangle((x-3,75,x+2,111),fill='#705a3e')
+    d.rectangle((x-1,82,x,105),fill='#94714c')
+    c=[('#2f6b54','#478b61','#81b46c'),('#375f55','#548963','#82a96c'),('#315b47','#447d54','#70a765')][variant]
+    # intentionally sharp, pixel stepped leafy crowns
+    p(d,[(x,53),(x+8,61),(x+7,64),(x+16,74),(x+12,79),(x+20,88),(x+15,96),(x-18,96),(x-21,88),(x-13,79),(x-15,73),(x-8,63)],c[0],'#244d46')
+    p(d,[(x,55),(x+7,63),(x+10,75),(x+6,80),(x+13,89),(x+8,89),(x+2,80),(x-6,80),(x-8,72)],c[1])
+    for xx,yy in [(-6,70),(4,68),(-11,86),(7,84),(-2,59)]:
+        d.rectangle((x+xx,yy,x+xx+3,yy+2),fill=c[2])
+    return im
+for i in range(3):add(tree(i))                           # 24-26
+
+def building(style,level,variant):
+    im=base('zone',style);d=ImageDraw.Draw(im)
+    x=36; bottom=109
+    if style==0: # housing: cream/warm wood, slate or russet roof
+        h=[32,48,63][level-1]
+        lt,rt,roof,edge=(('#ecd3a0','#c1a778','#bd655f','#855b53') if variant==0 else ('#b9c9a4','#8aa186','#a47058','#6a5246'))
+    elif style==1: # commerce: cool glass with bright awning and signage
+        h=[26,43,58][level-1]
+        lt,rt,roof,edge=(('#d2e7df','#86b7c6','#4c9bad','#436e7b') if variant==0 else ('#d9dac0','#86aaa6','#618e86','#4c6e70'))
+    else: # industry: broad low factory and brick smokestacks
+        h=[25,38,49][level-1]
+        lt,rt,roof,edge=(('#c2a385','#987c68','#667d7c','#586360') if variant==0 else ('#b49b86','#8b7d77','#727479','#5c5d65'))
+    top=bottom-h
+    # Side walls follow square/isometric axes.
+    p(d,[(14,top+11),(36,top+21),(36,bottom+1),(14,bottom-11)],lt,edge)
+    p(d,[(36,top+21),(58,top+11),(58,bottom-11),(36,bottom+1)],rt,edge)
+    diamond(d,36,top+11,22,11,roof,edge)
+    d.line([(16,top+11),(36,top+2),(56,top+11)],fill='#e2bd9d' if style==0 else '#a9c4c4',width=2)
+    if style==0:
+        if level==1: # cottage roof/ridge and door; clearly different from tall shops
+            d.rectangle((23,bottom-19,28,bottom-12),fill='#6f654d')
+            d.rectangle((43,bottom-21,49,bottom-16),fill='#89b3bd')
+        else:
+            for y in range(top+30,bottom-9,12):
+                d.rectangle((21,y,26,y+5),fill='#6d8994')
+                d.rectangle((43,y,48,y+5),fill='#7f9aa2')
+            d.rectangle((30,bottom-12,34,bottom-3),fill='#775d51')
+        if variant==1: d.rectangle((52,top+15,54,top+22),fill='#e4d49d')
+    elif style==1:
+        # storefront: broad window + neon awning, gold signage
+        d.polygon([(18,bottom-22),(36,bottom-15),(36,bottom-12),(18,bottom-19)],fill='#dbb976')
+        d.polygon([(36,bottom-15),(55,bottom-22),(55,bottom-19),(36,bottom-12)],fill='#caa45c')
+        d.rectangle((22,bottom-15,29,bottom-9),fill='#527f97')
+        d.rectangle((42,bottom-16,50,bottom-10),fill='#5b899a')
+        if level>1:
+            for y in range(top+25,bottom-27,12):
+                d.rectangle((23,y,28,y+5),fill='#5e91a5')
+                d.rectangle((44,y,49,y+5),fill='#6392a0')
+        d.rectangle((31,top+12,35,top+14),fill='#edf0ba')
+    else:
+        # Industrial vents, striped entrance and rooftop stack.
+        d.rectangle((22,bottom-17,33,bottom-5),fill='#5e6460')
+        for j in range(3):d.line((23,bottom-15+4*j,32,bottom-15+4*j),fill='#969f97',width=1)
+        d.rectangle((45,bottom-17,51,bottom-10),fill='#83918b')
+        chimney_x=46 if variant==0 else 26
+        chimney_y=top+10
+        d.rectangle((chimney_x-3,chimney_y-19,chimney_x+3,chimney_y+5),fill='#a16f60')
+        d.rectangle((chimney_x-4,chimney_y-20,chimney_x+4,chimney_y-17),fill='#5b5e5b')
+        d.rectangle((chimney_x-2,chimney_y-12,chimney_x+2,chimney_y-10),fill='#d0b498')
+    return im
+for style in range(3):
+    for level in range(1,4):
+        for variant in range(2):add(building(style,level,variant)) # 27..44
+
+rows=(len(sprites)+COLS-1)//COLS
+atlas=Image.new('RGBA',(CW*COLS,CH*rows),(0,0,0,0))
+for i,im in enumerate(sprites):atlas.paste(im,((i%COLS)*CW,(i//COLS)*CH))
+output=Path(__file__).resolve().parents[1]/'android/assets/city/atlas.png'
+output.parent.mkdir(parents=True, exist_ok=True)
+atlas.save(output,optimize=True)
+print(f'{len(sprites)} original isometric sprites => {atlas.size}, {output.stat().st_size} bytes: {output}')

@@ -15,18 +15,18 @@ public final class ControlsMathTest {
             float w=size[0],h=size[1],u=HudLayout.scale(w,h);
             for (int i=0;i<HudLayout.ACTIONS;i++) {
                 float cx=(i+0.5f)*w/HudLayout.ACTIONS;
-                ok(HudLayout.actionAt(cx,95*u,w,u)==i,"ação central "+i);
-                ok(HudLayout.isHud(cx,95*u,w,h,u),"faixa superior protegida");
+                ok(HudLayout.actionAt(cx,(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT/2f)*u,w,u)==i,"ação central "+i);
+                ok(HudLayout.isHud(cx,(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT/2f)*u,w,h,u),"faixa superior protegida");
             }
             for (int i=0;i<HudLayout.TOOLS;i++) {
                 float cx=(i+0.5f)*w/HudLayout.TOOLS;
-                ok(HudLayout.toolAt(cx,h-40*u,w,h,u)==i,"ferramenta central "+i);
-                ok(HudLayout.isHud(cx,h-40*u,w,h,u),"faixa inferior protegida");
+                ok(HudLayout.toolAt(cx,h-50*u,w,h,u)==i,"ferramenta central "+i);
+                ok(HudLayout.isHud(cx,h-50*u,w,h,u),"faixa inferior protegida");
             }
-            ok(HudLayout.actionAt(-2,95*u,w,u)==-1,"nunca selecionar fora à esquerda");
-            ok(HudLayout.toolAt(w+3,h-40*u,w,h,u)==-1,"nunca selecionar fora à direita");
+            ok(HudLayout.actionAt(-2,(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT/2f)*u,w,u)==-1,"nunca selecionar fora à esquerda");
+            ok(HudLayout.toolAt(w+3,h-50*u,w,h,u)==-1,"nunca selecionar fora à direita");
             ok(HudLayout.actionAt(w*0.5f,40*u,w,u)==-1,"clique na estatística sem ação");
-            ok(HudLayout.toolAt(w*0.5f,h-120*u,w,h,u)==-1,"clique fora do rodapé sem ferramenta");
+            ok(HudLayout.toolAt(w*0.5f,h-(HudLayout.BOTTOM_HEIGHT+6)*u,w,h,u)==-1,"clique fora do rodapé sem ferramenta");
             ok(!HudLayout.isHud(w/2f,h/2f,w,h,u),"centro é mapa");
         }
         for (int x=0;x<48;x++) for (int y=0;y<48;y++) {

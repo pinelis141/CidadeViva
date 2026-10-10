@@ -130,6 +130,24 @@ public final class City {
         return estimate;
     }
 
+    /** A lot requires a road on one of its four cardinal sides. A distant road does not count. */
+    public int unservedZones() {
+        int result=0;
+        for (int x=0;x<WIDTH;x++) for (int y=0;y<HEIGHT;y++)
+            if (tiles[x][y].type.isZone() && !hasRoad(x,y)) result++;
+        return result;
+    }
+
+    public String zoneDescription(int x,int y) {
+        if (!inBounds(x,y)) return "Fora do mapa";
+        Tile t=tiles[x][y];
+        if (!t.type.isZone()) return "Toque em uma zona para ver detalhes";
+        String kind=t.type==TileType.RESIDENTIAL?"CASAS":
+            t.type==TileType.COMMERCIAL?"LOJAS":"INDUSTRIA";
+        String access=hasRoad(x,y)?"RUA AO LADO":"SEM RUA ADJACENTE";
+        return kind+" NIVEL "+t.level+" | "+access;
+    }
+
     public boolean hasRoad(int x,int y) {
         return (isRoad(x+1,y) || isRoad(x-1,y) || isRoad(x,y+1) || isRoad(x,y-1));
     }
