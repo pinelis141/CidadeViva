@@ -48,6 +48,25 @@ A primeira etapa do marco visual e de construção foi integrada na `main` por m
 
 A versão `0.2.0-alpha1` **não é a v0.2.0 final**. O marco continua aberto até haver sprites originais, acabamento e validação em dispositivo. O QA geral da v0.1.1 também permanece pendente de interação em aparelho real.
 
+## Atualização de desenvolvimento — 0.2.0-alpha2
+
+A primeira revisão de arte e interface chegou à `main` por meio do [PR #18](https://github.com/pinelis141/CidadeViva/pull/18), com build Android e testes Java aprovados.
+
+| Tarefa | Implementação | Validação ainda necessária |
+|---|---|---|
+| CV-007 — pincel de ruas | Implementado na alpha1 | Vídeo do usuário confirmou o desenho básico de ruas por arrasto. |
+| CV-008 — zoneamento em área | Implementado na alpha1 | Vídeo do usuário confirmou seleção e aplicação de áreas. |
+| CV-009 — conexão de ruas | Sprite específico para cada um dos 16 bitmasks na alpha2 | Validar curvas, T e cruzamentos em tela. |
+| CV-010 — pipeline de assets | Atlas 576×768 PNG e gerador Python originais; `ART-DIRECTION.md` | Continuar refino estético; registrar futuras fontes externas se usadas. |
+| CV-011 — sprites isométricos | 45 sprites originais para terreno, árvores, água, ruas e prédios | Validar encaixe, perspectiva e legibilidade em Android real. |
+| CV-012 — HUD/contexto | Toolbars redimensionadas, ícones distinguíveis e alerta de lote sem rua | Verificar toques, contraste, sobreposição e orientação em vários aparelhos. |
+
+**Nova regra visível:** lotes comerciais/residenciais/industriais sem rua adjacente recebem aviso âmbar; tocar no lote mostra `SEM RUA ADJACENTE`. Criar uma rua no lado do lote elimina o aviso correspondente. A simulação já exigia rua adjacente; a mudança torna a condição compreensível. O saldo/população ainda seguem o modelo econômico simplificado.
+
+**Verificações automáticas:** `tools/test-core.sh`, `tools/verify_atlas.py`, Gradle Android APK, confirmação da presença do PNG em `assets/city/atlas.png` e package debug `br.com.cidadeviva.game.dev`. **O marco visual permanece aberto até o QA físico da alpha2.**
+
+**Checklist do aparelho:** [QA-ANDROID-0.2.0-alpha2.md](QA-ANDROID-0.2.0-alpha2.md). Conteúdo futuro: interiores? Não; próximo foco em refinamento visual, inspeção de terreno e critérios de demanda/emprego antes de avançar a serviços e veículos.
+
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
