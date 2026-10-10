@@ -4,11 +4,13 @@ import br.com.cidadeviva.sim.City;
 import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.Tile;
 import br.com.cidadeviva.sim.TileType;
+import br.com.cidadeviva.input.HudLayout;
+import br.com.cidadeviva.input.IsoGrid;
+import br.com.cidadeviva.storage.CitySaveStore;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -20,10 +22,8 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.io.OutputStream;
 
 /** Entrada libGDX: jogo 2D isométrico, controles Android e HUD sem assets externos. */
 public final class CityGame extends ApplicationAdapter {
@@ -48,12 +48,17 @@ public final class CityGame extends ApplicationAdapter {
     private GlyphLayout glyph;
     private Matrix4 uiProjection;
     private final Vector3 scratch = new Vector3();
+    private CitySaveStore saves;
     private TileType selected = TileType.ROAD;
     private int hoverX = -1, hoverY = -1;
     private float simClock = 0;
     private String toast = "Toque no mapa para construir. Arraste para mover.";
     private float toastClock = 5f;
     private float uiScale = 1f;
+    private boolean simulationPaused = false;
+    private int simulationSpeed = 1;
+    private boolean helpVisible = false;
+    private static final String[] ACTION_LABELS = {"PAUSA", "1X", "AJUDA", "SALVAR", "ABRIR"};
     private float w, h;
     private final boolean[] down = new boolean[2];
     private final float[] px = new float[2], py = new float[2];
@@ -61,6 +66,9 @@ public final class CityGame extends ApplicationAdapter {
     private float dragTravel;
     private boolean pinchActive;
     private float pinchDistance;
+    private boolean suppressTap;
+    private int pendingAction = -1, pendingTool = -1;
+    private boolean secondPointerOnHud = false;
 
     private static final Map<Integer,Color> PALETTE = new HashMap<>();
     private static Color rgb(int r,int g,int b) {
@@ -75,6 +83,7 @@ public final class CityGame extends ApplicationAdapter {
 
     @Override public void create() {
         city = new City();
+        saves = new CitySaveStore(Gdx.files.local(SAVE_PATH).file());
         camera = new OrthographicCamera();
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -84,28 +93,30 @@ public final class CityGame extends ApplicationAdapter {
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         camera.position.set(0, -(City.WIDTH/2f + City.HEIGHT/2f) * HALF_H, 0);
         camera.zoom = 0.95f;
-        camera.update();
+        clampCamera();
         Gdx.input.setInputProcessor(new Controls());
         load(false); // Se houver progresso anterior, restaurar automaticamente.
     }
 
     @Override public void resize(int width,int height) {
         w = Math.max(1,width); h = Math.max(1,height);
-        uiScale = MathUtils.clamp(Math.min(w / 730f, h / 970f), 0.65f, 1.65f);
+        uiScale = HudLayout.scale(w,h);
         camera.setToOrtho(false, w, h);
-        camera.update();
+        clampCamera();
         uiProjection.setToOrtho2D(0,0,w,h);
         font.getData().setScale(1.15f * uiScale);
     }
 
     @Override public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
-        simClock += delta;
         toastClock -= delta;
-        if (simClock >= 4f) {
-            simClock -= 4f;
-            city.nextDay();
-            if (city.day() % 15 == 0) save(false);
+        if (!simulationPaused) {
+            simClock += delta * simulationSpeed;
+            while (simClock >= 4f) {
+                simClock -= 4f;
+                city.nextDay();
+                if (city.day() % 15 == 0) save(false);
+            }
         }
         Gdx.gl.glClearColor(0.085f,0.135f,0.155f,1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -216,178 +227,276 @@ public final class CityGame extends ApplicationAdapter {
     }
 
     private void drawHud() {
+        float u = uiScale;
+        float top = HudLayout.TOP_HEIGHT*u;
+        float bottom = HudLayout.BOTTOM_HEIGHT*u;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.setProjectionMatrix(uiProjection);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(rgb(24,34,41));
-        shapes.rect(0,h-79*uiScale,w,79*uiScale);
-        shapes.rect(0,0,w,91*uiScale);
+        shapes.rect(0,h-top,w,top);
+        shapes.rect(0,0,w,bottom);
         shapes.setColor(rgb(70,153,112));
-        shapes.rect(0,h-79*uiScale,w,3*uiScale);
+        shapes.rect(0,h-top,w,3*u);
         shapes.setColor(rgb(49,67,72));
-        shapes.rect(0,91*uiScale,w,2*uiScale);
-        float buttonWidth=(w-20*uiScale)/5f;
-        for (int i=0;i<5;i++) {
-            float bx=10*uiScale+i*buttonWidth+3*uiScale;
-            float by=17*uiScale;
-            float bw=buttonWidth-6*uiScale;
+        shapes.rect(0,bottom,w,2*u);
+
+        float buttonWidth = w/HudLayout.TOOLS;
+        for (int i=0;i<HudLayout.TOOLS;i++) {
+            float bx=i*buttonWidth+4*u;
+            float bw=buttonWidth-8*u;
             boolean active=selected==tools[i];
-            shapes.setColor(active ? rgb(235,215,144):rgb(53,69,78));
-            shapes.rect(bx-(active?2:0),by-(active?2:0),bw+(active?4:0),57*uiScale+(active?4:0));
-            shapes.setColor(active ? rgb(67,75,75):rgb(36,47,55));
-            shapes.rect(bx+2*uiScale,by+2*uiScale,bw-4*uiScale,53*uiScale);
+            shapes.setColor(active?rgb(235,215,144):rgb(53,69,78));
+            shapes.rect(bx,14*u,bw,60*u);
+            shapes.setColor(active?rgb(67,75,75):rgb(36,47,55));
+            shapes.rect(bx+2*u,16*u,bw-4*u,56*u);
             shapes.setColor(toolColors[i]);
-            shapes.rect(bx+bw/2f-9*uiScale,by+29*uiScale,18*uiScale,16*uiScale);
+            shapes.rect(bx+bw/2f-9*u,43*u,18*u,16*u);
         }
-        for (int i=0;i<2;i++) {
-            float bx=w-(i==0?187:94)*uiScale;
-            shapes.setColor(rgb(49,76,83));
-            shapes.rect(bx,h-51*uiScale,87*uiScale,34*uiScale);
+        for (int i=0;i<HudLayout.ACTIONS;i++) {
+            float bx=i*w/HudLayout.ACTIONS+3*u;
+            float by=h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT)*u;
+            float bw=w/HudLayout.ACTIONS-6*u;
+            boolean active=(i==0 && simulationPaused);
+            shapes.setColor(active?rgb(155,113,72):rgb(49,76,83));
+            shapes.rect(bx,by,bw,(HudLayout.ACTION_HEIGHT-3)*u);
+        }
+        if (helpVisible) {
+            shapes.setColor(0f,0f,0f,0.88f);
+            shapes.rect(0,0,w,h);
+            shapes.setColor(rgb(34,54,59));
+            shapes.rect(15*u,h/2f-115*u,w-30*u,230*u);
         }
         shapes.end();
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         font.setColor(rgb(235,243,227));
-        // Evitar colisão entre estatísticas e controles de salvamento em telas menores.
-        font.draw(batch,"CIDADE VIVA",12*uiScale,h-15*uiScale);
-        font.getData().setScale(0.85f*uiScale);
-        font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*uiScale,h-39*uiScale);
-        font.draw(batch,"Empregos: "+city.jobs()+"  |  Caixa/dia: "+city.lastIncome(),12*uiScale,h-59*uiScale);
-        font.getData().setScale(1.00f*uiScale);
-        font.draw(batch,"SALVAR",w-179*uiScale,h-26*uiScale);
-        font.draw(batch,"ABRIR",w-86*uiScale,h-26*uiScale);
-        font.getData().setScale(0.91f*uiScale);
-        for(int i=0;i<5;i++) {
-            float bx=10*uiScale+i*buttonWidth+3*uiScale;
-            float bw=buttonWidth-6*uiScale;
-            glyph.setText(font,toolNames[i]);
-            font.draw(batch,toolNames[i],bx+(bw-glyph.width)*0.5f,27*uiScale);
+        font.getData().setScale(1.03f*u);
+        font.draw(batch,"CIDADE VIVA  0.1.1",12*u,h-17*u);
+        font.getData().setScale(0.89f*u);
+        font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-41*u);
+        font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-62*u);
+        font.getData().setScale(0.90f*u);
+        for (int i=0;i<HudLayout.ACTIONS;i++) {
+            String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):ACTION_LABELS[i];
+            glyph.setText(font,text);
+            float bw=w/HudLayout.ACTIONS;
+            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,h-99*u);
         }
-        if (toastClock>0) {
-            font.getData().setScale(0.9f*uiScale);
+        font.getData().setScale(0.91f*u);
+        for (int i=0;i<HudLayout.TOOLS;i++) {
+            glyph.setText(font,toolNames[i]);
+            float bw=w/HudLayout.TOOLS;
+            font.draw(batch,toolNames[i],i*bw+(bw-glyph.width)*0.5f,27*u);
+        }
+        if (toastClock>0 && !helpVisible) {
+            font.getData().setScale(0.87f*u);
             font.setColor(rgb(252,244,191));
-            font.draw(batch,toast,12*uiScale,109*uiScale);
+            font.draw(batch,toast,12*u,(HudLayout.BOTTOM_HEIGHT+20)*u);
+        }
+        if (helpVisible) {
+            float x=29*u,y=h/2f+86*u;
+            font.setColor(rgb(248,241,214));
+            font.getData().setScale(1.02f*u);
+            font.draw(batch,"COMO JOGAR",x,y);
+            font.getData().setScale(0.93f*u);
+            font.draw(batch,"Toque: construir no terreno",x,y-38*u);
+            font.draw(batch,"Arraste: mover a camera",x,y-67*u);
+            font.draw(batch,"Dois dedos: aproximar/afastar",x,y-96*u);
+            font.draw(batch,"Use SALVAR para guardar a cidade",x,y-125*u);
+            font.draw(batch,"Toque na tela para fechar",x,y-166*u);
         }
         batch.end();
+        Gdx.gl.glDisable(GL20.GL_BLEND);
     }
 
     private void message(String text) { toast=text;toastClock=3f; }
-    private FileHandle saveFile() { return Gdx.files.local(SAVE_PATH); }
+
     private void save(boolean feedback) {
         try {
-            FileHandle destination = saveFile();
-            destination.parent().mkdirs();
-            FileHandle staging=Gdx.files.local(SAVE_PATH+".tmp");
-            try(OutputStream out=staging.write(false)) { CityPersistence.save(city,out); }
-            // Não sobrescrever o arquivo válido antes que o temporário tenha sido concluído.
-            staging.moveTo(destination);
+            saves.save(city);
             if (feedback) message("Cidade salva no dispositivo!");
-        } catch(Exception e) {
-            if(feedback) message("Falha ao salvar: "+e.getClass().getSimpleName());
+        } catch (Exception e) {
+            if (feedback) message("Erro ao salvar: verifique espaco disponivel");
             Gdx.app.error("CidadeViva","Erro ao salvar",e);
         }
     }
+
     private void load(boolean feedback) {
         try {
-            if (!saveFile().exists()) {if(feedback) message("Ainda não há cidade salva");return;}
-            try(InputStream in=saveFile().read()) { city=CityPersistence.load(in); }
-            if(feedback) message("Cidade carregada!");
-        } catch(Exception e) {
-            if(feedback) message("Falha ao abrir salvamento");
+            CitySaveStore.Loaded result = saves.load();
+            if (result == null) {
+                if (feedback) message("Ainda não ha cidade salva");
+                return;
+            }
+            city = result.city;
+            if (result.fromBackup) message("Backup recuperado! Salve novamente.");
+            else if (feedback) message("Cidade carregada!");
+        } catch (Exception e) {
+            if (feedback) message("Falha ao abrir salvamento");
             Gdx.app.error("CidadeViva","Erro ao carregar",e);
         }
     }
     @Override public void pause() { save(false); }
+
     @Override public void dispose() {
         save(false);
         shapes.dispose();batch.dispose();font.dispose();
     }
 
+    private void clampCamera() {
+        if (camera == null) return;
+        float minX = -(City.HEIGHT-1)*HALF_W-HALF_W-72;
+        float maxX = (City.WIDTH-1)*HALF_W+HALF_W+72;
+        float minY = -(City.WIDTH+City.HEIGHT-2)*HALF_H-HALF_H-72;
+        float maxY = HALF_H+108;
+        camera.position.x=IsoGrid.bound(camera.position.x,minX,maxX,w*camera.zoom);
+        camera.position.y=IsoGrid.bound(camera.position.y,minY,maxY,h*camera.zoom);
+        camera.update();
+    }
+
     private void pan(float dx,float dy) {
         camera.position.add(-dx*camera.zoom,dy*camera.zoom,0);
-        camera.update();
+        clampCamera();
     }
-    private void changeZoom(float factor) {
-        camera.zoom=MathUtils.clamp(camera.zoom*factor,0.48f,2.1f);
-        camera.update();
+
+    /** Anchor the previously touched world point under the new finger midpoint. */
+    private void zoomAround(float factor, float oldX,float oldY,float newX,float newY) {
+        float oldZoom=camera.zoom;
+        float newZoom=MathUtils.clamp(oldZoom*factor,0.48f,2.1f);
+        float[] center=IsoGrid.anchoredCamera(camera.position.x,camera.position.y,
+            oldZoom,newZoom,oldX,oldY,newX,newY,w,h);
+        camera.zoom=newZoom;
+        camera.position.set(center[0],center[1],0);
+        clampCamera();
     }
+
     private void buildAt(int sx,int sy) {
         scratch.set(sx,sy,0);
         camera.unproject(scratch);
-        float a=scratch.x/HALF_W, b=-scratch.y/HALF_H;
-        int x=MathUtils.floor((a+b)/2f+0.5f),y=MathUtils.floor((b-a)/2f+0.5f);
+        int[] index=IsoGrid.pick(scratch.x,scratch.y,HALF_W,HALF_H);
+        int x=index[0],y=index[1];
         if (!city.inBounds(x,y)) {message("Fora do mapa");return;}
         message(city.build(x,y,selected));
         hoverX=x;hoverY=y;
     }
 
+    private void activateAction(int index) {
+        switch(index) {
+            case 0:
+                simulationPaused=!simulationPaused;
+                message(simulationPaused?"Simulacao pausada":"Simulacao retomada");
+                break;
+            case 1:
+                simulationSpeed=simulationSpeed==1?2:simulationSpeed==2?4:1;
+                message("Velocidade "+simulationSpeed+"x");
+                break;
+            case 2: helpVisible=true;break;
+            case 3: save(true);break;
+            case 4: load(true);break;
+            default: break;
+        }
+    }
+
     private final class Controls extends InputAdapter {
         @Override public boolean touchDown(int screenX,int screenY,int pointer,int button) {
-            if(pointer > 1)return false;
-            if(pointer==0) {
-                moving=false;
-                dragTravel=0;
-                startedOnUi=false;
-                float u=uiScale;
-                if(screenY>h-91*u) {
-                    startedOnUi=true;
-                    int ix=Math.min(4,Math.max(0,(int)((screenX-10*u)/((w-20*u)/5f))));
-                    selected=tools[ix];
-                    hoverX=-1;hoverY=-1;
-                    message("Ferramenta: "+toolNames[ix]+" (R$ "+city.cost(selected)+")");
-                    return true;
-                }
-                if(screenY<79*u) {
-                    startedOnUi=true;
-                    if(screenX>w-187*u && screenX<w-94*u) save(true);
-                    else if(screenX>=w-94*u) load(true);
-                    return true;
-                }
+            if (pointer > 1) {
+                suppressTap=true;
+                return true;
             }
             down[pointer]=true;
             px[pointer]=screenX;py[pointer]=screenY;
-            if(down[0] && down[1]) {
-                pinchActive=true;
-                moving=true;
-                pinchDistance=Math.max(1,(float)Math.sqrt((px[0]-px[1])*(px[0]-px[1])+(py[0]-py[1])*(py[0]-py[1])));
+            if (pointer==0) {
+                moving=false;
+                dragTravel=0;
+                suppressTap=false;
+                pinchActive=false;
+                pendingAction=-1;
+                pendingTool=-1;
+                startedOnUi=helpVisible || HudLayout.isHud(screenX,screenY,w,h,uiScale);
+                if (!helpVisible) {
+                    pendingAction=HudLayout.actionAt(screenX,screenY,w,uiScale);
+                    pendingTool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
+                }
+            }
+            if (pointer==1) {
+                secondPointerOnHud=HudLayout.isHud(screenX,screenY,w,h,uiScale);
+            }
+            if (down[0] && down[1]) {
+                suppressTap=true;
+                if (!startedOnUi && !secondPointerOnHud && !helpVisible) {
+                    pinchActive=true;
+                    moving=true;
+                    pinchDistance=Math.max(1f,(float)Math.hypot(px[0]-px[1],py[0]-py[1]));
+                }
             }
             return true;
         }
         @Override public boolean touchDragged(int screenX,int screenY,int pointer) {
-            if(pointer>1 || !down[pointer])return false;
-            float dx=screenX-px[pointer],dy=screenY-py[pointer];
+            if (pointer>1 || !down[pointer])return false;
+            float prevX=px[pointer], prevY=py[pointer];
+            float oldMidX=(px[0]+px[1])*0.5f,oldMidY=(py[0]+py[1])*0.5f;
             px[pointer]=screenX;py[pointer]=screenY;
-            if(down[0] && down[1]) {
-                float d=Math.max(1,(float)Math.sqrt((px[0]-px[1])*(px[0]-px[1])+(py[0]-py[1])*(py[0]-py[1])));
-                changeZoom(pinchDistance/d);
+            if (startedOnUi || helpVisible) {
+                dragTravel += Math.abs(screenX-prevX)+Math.abs(screenY-prevY);
+                if (dragTravel>Math.max(10f,12f*uiScale)) moving=true;
+                return true;
+            }
+            if (pinchActive && down[0] && down[1]) {
+                float newMidX=(px[0]+px[1])*0.5f,newMidY=(py[0]+py[1])*0.5f;
+                float d=Math.max(1f,(float)Math.hypot(px[0]-px[1],py[0]-py[1]));
+                zoomAround(pinchDistance/d,oldMidX,oldMidY,newMidX,newMidY);
                 pinchDistance=d;
                 moving=true;
                 return true;
             }
+            float dx=screenX-prevX,dy=screenY-prevY;
             dragTravel += Math.abs(dx)+Math.abs(dy);
-            if(dragTravel>12*uiScale) moving=true;
-            if(moving) pan(dx,dy);
+            if (dragTravel>Math.max(10f,12f*uiScale)) moving=true;
+            if (moving) pan(dx,dy);
             return true;
         }
         @Override public boolean touchUp(int screenX,int screenY,int pointer,int button) {
-            if(pointer>1)return false;
+            if(pointer>1)return true;
+            if(!down[pointer])return true;
             down[pointer]=false;
             if(pointer==0) {
-                if(!moving && !startedOnUi && !pinchActive) buildAt(screenX,screenY);
+                if(helpVisible && startedOnUi) {
+                    helpVisible=false;
+                } else if (startedOnUi && !suppressTap && !moving) {
+                    int action=HudLayout.actionAt(screenX,screenY,w,uiScale);
+                    int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
+                    if (action>=0 && action==pendingAction) activateAction(action);
+                    else if (tool>=0 && tool==pendingTool) {
+                        selected=tools[tool];
+                        hoverX=-1;hoverY=-1;
+                        message("Ferramenta: "+toolNames[tool]+" (R$ "+city.cost(selected)+")");
+                    }
+                } else if (!moving && !startedOnUi && !suppressTap &&
+                           !HudLayout.isHud(screenX,screenY,w,h,uiScale)) {
+                    buildAt(screenX,screenY);
+                }
+                pendingAction=-1;pendingTool=-1;
                 startedOnUi=false;
             }
-            if(!down[0] && !down[1]) pinchActive=false;
+            if (pointer==1) secondPointerOnHud=false;
+            if (!down[0] || !down[1]) pinchActive=false;
+            if(!down[0] && !down[1])suppressTap=false;
             return true;
         }
         @Override public boolean scrolled(float amountX,float amountY) {
-            changeZoom(1f+amountY*0.12f);
+            float sx=Gdx.input.getX(),sy=Gdx.input.getY();
+            zoomAround(1f+amountY*0.12f,sx,sy,sx,sy);
             return true;
         }
         @Override public boolean keyDown(int keycode) {
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
-            if(keycode>=Input.Keys.NUM_1 && keycode<=Input.Keys.NUM_5) {
+            if(keycode==Input.Keys.SPACE)activateAction(0);
+            if(keycode==Input.Keys.EQUALS)activateAction(1);
+            if(keycode>=Input.Keys.NUM_1 && keycode<=Input.Keys.NUM_5)
                 selected=tools[keycode-Input.Keys.NUM_1];
-            }
             return true;
         }
     }

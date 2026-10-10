@@ -20,7 +20,7 @@ MVP de city builder isométrico original. **Não utiliza Godot.**
 3. Ao final de uma execução bem-sucedida, abra o run e baixe o artefato `CidadeViva-Android-debug`.
 4. Extraia o ZIP do artefato e instale o APK de teste no Android.
 
-O APK de teste é produzido pelo GitHub Actions em `Actions > Compilar APK Android > Artifacts`. Não distribuir o APK debug como versão final na Play Store. Para publicação, será necessário assinar uma build release.
+O APK **não acompanha este ZIP de código-fonte**: a compilação requer Gradle, Android SDK e dependências libGDX obtidas pela Internet, indisponíveis neste ambiente de geração. Não distribuir o APK debug como versão final na Play Store. Para publicação, será preciso assinar uma build release.
 
 ## Compilar num computador
 
@@ -41,4 +41,15 @@ gradle :lwjgl3:run
 
 ## Limites do MVP
 
-Os modelos gráficos são formas geométricas temporárias; sprites pixel-art definitivos, trânsito, serviços públicos, redes elétricas, estrada auto-conectada, sistema de demanda profundo, animações e performance em celulares reais são etapas seguintes. O APK debug foi compilado no GitHub Actions; permanece pendente teste manual em dispositivo Android. Identidade gráfica e mecânicas são próprias, sem reaproveitar assets de TheoTown.
+Os modelos gráficos são formas geométricas temporárias; sprites pixel-art definitivos, trânsito, serviços públicos, redes elétricas, estrada auto-conectada, sistema de demanda profundo, animações e performance em celulares reais são etapas seguintes. O APK ainda não foi compilado nem testado em dispositivo. Identidade gráfica e mecânicas são próprias, sem reaproveitar assets de TheoTown.
+
+## Atualização 0.1.1 — estabilização Android
+
+- Toques do HUD separados do mapa e seleção de botão confirmada no `touchUp`.
+- Zoom por pinça com ponto ancorado, pan com dois dedos e limites de câmera.
+- Pausa/retomar, velocidades 1×, 2×, 4× e painel AJUDA.
+- Saves CVT2 com CRC32 e backup automático; leitura retrocompatível com CVT1 (v0.1.0).
+- Testes puros Java para seleção isométrica, geometria de câmera, regiões clicáveis, salvamento e compatibilidade.
+- Plano de verificação manual do Android em [QA-ANDROID-0.1.1.md](QA-ANDROID-0.1.1.md).
+
+**Importante:** a compilação CI e os testes Java não substituem a validação em aparelho Android. Issues CV-001 a CV-006 acompanham o encerramento da sprint.
