@@ -130,7 +130,8 @@ public final class CityGame extends ApplicationAdapter {
                 if (city.day() % 15 == 0) save(false);
             }
         }
-        Gdx.gl.glClearColor(0.085f,0.135f,0.155f,1f);
+        // Matt forest-green fog surrounds map bounds; avoids pure black corners.
+        Gdx.gl.glClearColor(0.12f,0.19f,0.16f,1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         camera.update();
         shapes.setProjectionMatrix(camera.combined);
@@ -161,7 +162,7 @@ public final class CityGame extends ApplicationAdapter {
                     sy < camera.position.y-h*camera.zoom/2f-138 ||
                     sy > camera.position.y+h*camera.zoom/2f+76) continue;
                 Tile t=city.tile(x,y);
-                int id=PixelArtAtlas.tileSprite(t.type,city.roadMask(x,y),x,y);
+                int id=PixelArtAtlas.tileSprite(t.type,city.roadMask(x,y),city.waterMask(x,y),x,y);
                 pixelArt.draw(batch,id,sx,sy);
                 if (t.type==TileType.FOREST) pixelArt.draw(batch,PixelArtAtlas.treeSprite(x,y),sx,sy);
                 if (t.type.isZone() && t.level>0)
@@ -389,7 +390,7 @@ public final class CityGame extends ApplicationAdapter {
         batch.begin();
         font.setColor(rgb(235,243,227));
         font.getData().setScale(1.20f*u);
-        font.draw(batch,"CIDADE VIVA  0.2.0a2",12*u,h-19*u);
+        font.draw(batch,"CIDADE VIVA  0.2.0a3",12*u,h-19*u);
         font.getData().setScale(1.10f*u);
         font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
         font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);

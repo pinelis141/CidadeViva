@@ -1,5 +1,23 @@
 # Histórico de versões
 
+## 0.2.0-alpha3 — 10/10/2026
+
+- Atlas original ampliado de 45 para **80 sprites** (576×1280 RGBA).
+- **16 transições de margem de água** conforme adjacência real com tiles vizinhos.
+- **6 novas variantes de árvore**, incluindo copas arredondadas e árvore outonal.
+- **4 variações detalhadas de gramado**, distribuídas em manchas em vez de xadrez.
+- **9 modelos arquitetônicos adicionais**, preservando as categorias e os níveis existentes.
+- **Novos mapas** passam a gerar dois lagos contínuos e agrupamentos de vegetação.
+- Fora dos limites do mapa, o fundo é verde escuro em vez de espaço quase preto.
+- Testes Java de máscara de água, conectividade de lagos, determinismo e persistência
+  (9.220 verificações adicionais).
+- Formato de save CVT2 **inalterado**; cidades antigas não são modificadas.
+- Modo de testes Android `.dev` preservado, com mesma chave estável, versão code 5.
+- Não inclui ainda menu de nova cidade: para preservar o save, terreno antigo
+  não é substituído automaticamente. Não excluir dados só para ver lagos novos.
+
+# Histórico de versões
+
 ## 0.2.0-alpha2
 - HUD inferior com mais espaço, legendas reposicionadas, letras maiores e pictogramas de ferramentas distintos.
 - Contador de zonas sem rua, alerta âmbar nos lotes e descrição contextual ao tocar.

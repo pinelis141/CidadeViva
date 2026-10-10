@@ -136,6 +136,106 @@ for style in range(3):
     for level in range(1,4):
         for variant in range(2):add(building(style,level,variant)) # 27..44
 
+# Alpha 3: 16 shoreline transitions, 6 tree silhouettes, 4 ground accents,
+# and 9 new architectural variants. Existing indices 0-44 remain unchanged.
+
+def shore_water(mask):
+    im=Image.new('RGBA',(CW,CH));d=ImageDraw.Draw(im)
+    diamond(d,36,112,32,16,'#438da2')
+    # All edges are contiguous. Only edges *without* water neighbours form a shore.
+    # Bit order SE(1), NW(2), SW(4), NE(8), matching City.waterMask.
+    edges=[[(67,112),(36,127)],[(5,112),(36,97)],
+           [(5,112),(36,127)],[(36,97),(67,112)]]
+    inside=[[(62,111),(36,124)],[(10,111),(36,100)],
+            [(10,113),(36,124)],[(36,100),(62,113)]]
+    for bit,edge in enumerate(edges):
+        if not (mask & (1<<bit)):
+            d.line(edge,fill='#b2c4a7',width=3)
+            d.line(inside[bit],fill='#83bec0',width=2)
+    rng=random.Random(200+mask)
+    for i in range(8):
+        x=rng.randrange(14,57);y=rng.randrange(104,119)
+        if abs(x-36)*.5+abs(y-112)>12:continue
+        d.line((x,y,x+rng.randrange(2,6),y-1),fill=rng.choice(['#63aabb','#79bec8','#a1ccd0']),width=1)
+    return im
+for mask in range(16):add(shore_water(mask))          # 45-60
+
+def leafy_tree(v):
+    im=base('grass',v+1);d=ImageDraw.Draw(im)
+    rng=random.Random(801+v)
+    x=34+(v%3-1)*3
+    if v==3 or v==4: # lighter birch silhouette
+        d.rectangle((x-2,73,x+2,108),fill='#d4c9a4')
+        for yy in range(76,105,9):d.line((x-1,yy,x+1,yy+1),fill='#6f6f62')
+    else:
+        d.rectangle((x-3,77,x+3,110),fill='#785a3c')
+    if v==5: # rounded autumn tree
+        canopy=['#a2824a','#d4ac59','#ad784b']
+    elif v==3 or v==4:
+        canopy=['#527d50','#88a45b','#a1b872']
+    else:
+        canopy=['#3f7458','#598a55','#81ac69']
+    # Multiple overlapping stepped circles produce an irregular broad crown.
+    for xx,yy,rad in [(x-13,69,12),(x+11,69,12),(x,58,16),
+                       (x-5,80,11),(x+6,77,12)]:
+        col=canopy[rng.randrange(3)]
+        d.rectangle((xx-rad//2,yy-rad//2,xx+rad//2,yy+rad//2),fill=col)
+        d.ellipse((xx-rad,yy-rad,xx+rad,yy+rad),fill=col)
+    for i in range(17):
+        xx=x+rng.randrange(-19,20);yy=rng.randrange(52,83)
+        if (xx-x)**2/400+(yy-67)**2/340<1.1:
+            d.rectangle((xx,yy,xx+2,yy+2),fill=rng.choice(canopy[1:]))
+    return im
+for v in range(6):add(leafy_tree(v))                    # 61-66
+
+def meadow(v):
+    im=base('grass',v+5);d=ImageDraw.Draw(im)
+    rng=random.Random(413+v)
+    for i in range(10):
+        x=rng.randrange(15,57);y=rng.randrange(102,124)
+        if abs(x-36)*.5+abs(y-112)>12:continue
+        if v==0: # golden wildflowers
+            d.rectangle((x,y-2,x,y),fill='#5f8b52')
+            d.point((x,y-3),fill='#e1c77a')
+        elif v==1: # stones
+            d.polygon([(x-2,y),(x+1,y-2),(x+4,y),(x+1,y+2)],fill='#859685')
+            d.line((x-2,y,x+1,y-2),fill='#c2c8a5')
+        elif v==2: # scrub
+            d.rectangle((x-2,y-1,x+3,y+1),fill='#568852')
+            d.rectangle((x,y-4,x+1,y-1),fill='#8fab5f')
+        else: # dry speckles
+            d.line((x-2,y,x+2,y+1),fill='#b6b27a')
+    return im
+for v in range(4):add(meadow(v))                        # 67-70
+
+def landmark_variant(style,level):
+    im=building(style,level,2);d=ImageDraw.Draw(im)
+    h=([32,48,63] if style==0 else [26,43,58] if style==1 else [25,38,49])[level-1]
+    top=109-h
+    if style==0: # porched houses with alternate teal roof and chimney
+        diamond(d,36,top+11,22,11,'#537a78','#3d5c62')
+        d.polygon([(17,top+11),(36,top+3),(55,top+11)],fill='#77989a')
+        d.rectangle((42,top-5,47,top+8),fill='#b78d6d')
+        d.rectangle((41,top-7,48,top-4),fill='#63585c')
+        d.rectangle((20,109-19,29,109-15),fill='#d8b67b')
+        d.line((18,109-20,33,109-20),fill='#f1dab1',width=2)
+    elif style==1: # market with large sign, canvas awning and roof skylight
+        diamond(d,36,top+11,22,11,'#8d7a66','#657b73')
+        d.rectangle((32,top+5,39,top+8),fill='#bbd8cf')
+        d.rectangle((17,109-27,32,109-22),fill='#e4b978')
+        d.rectangle((41,109-26,55,109-22),fill='#e4b978')
+        for i in (21,27,44,51):d.line((i,109-22,i,109-19),fill='#b56460')
+    else: # tall silo and skylight differentiate industrial footprint
+        diamond(d,36,top+11,22,11,'#697784','#52636d')
+        d.rectangle((20,top-16,28,top+6),fill='#c1b2a0')
+        d.rectangle((19,top-17,29,top-14),fill='#6a696b')
+        d.rectangle((36,top+7,44,top+10),fill='#91a8b0')
+        d.rectangle((47,top+13,51,top+21),fill='#9a6f60')
+    return im
+for style in range(3):
+    for level in range(1,4):add(landmark_variant(style,level)) # 71-79
+assert len(sprites)==80,len(sprites)
+
 rows=(len(sprites)+COLS-1)//COLS
 atlas=Image.new('RGBA',(CW*COLS,CH*rows),(0,0,0,0))
 for i,im in enumerate(sprites):atlas.paste(im,((i%COLS)*CW,(i//COLS)*CH))
