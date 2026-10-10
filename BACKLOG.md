@@ -67,6 +67,15 @@ A primeira revisão de arte e interface chegou à `main` por meio do [PR #18](ht
 
 **Checklist do aparelho:** [QA-ANDROID-0.2.0-alpha2.md](QA-ANDROID-0.2.0-alpha2.md). Conteúdo futuro: interiores? Não; próximo foco em refinamento visual, inspeção de terreno e critérios de demanda/emprego antes de avançar a serviços e veículos.
 
+## Atualização — 0.2.0-alpha4 (três cidades e salvamento seguro)
+
+- **Implementado:** menu CIDADES com slots 1, 2 e 3, indicadores de dia/população/saldo, criação somente em slots vazios, troca protegida e escolha do último slot após reiniciar.
+- **Compatibilidade:** o slot 1 permanece no arquivo **original** `cidade-viva/salvamento.cvt`; slots 2 e 3 usam `cidade-viva/slots/cidade-2.cvt` e `cidade-viva/slots/cidade-3.cvt`, com seus próprios backups. Nenhum save antigo é renomeado, apagado ou substituído ao criar outra cidade.
+- **Novo mapa:** cidades dos slots adicionais recebem alterações determinísticas de lagos e florestas; o formato de save CRC32 CVT2 continua compatível.
+- **Teste:** casos puros Java de troca, corrupção, independência e reinício passaram, junto ao CI Android e verificação do atlas. [PR #20](https://github.com/pinelis141/CidadeViva/pull/20).
+- **QA físico pendente:** validar a navegação entre slots, fechar/reabrir e preservar as construções na instalação Android [issue #21](https://github.com/pinelis141/CidadeViva/issues/21). Somente após aceitação física encerrar o marco.
+- **Próximo sistema (v0.3.0):** demanda residencial/comercial/industrial e regras econômicas mais realistas — começar após confirmar que salvamentos e a troca entre cidades funcionam.
+
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
