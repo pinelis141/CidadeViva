@@ -76,6 +76,24 @@ A primeira revisão de arte e interface chegou à `main` por meio do [PR #18](ht
 - **QA físico pendente:** validar a navegação entre slots, fechar/reabrir e preservar as construções na instalação Android [issue #21](https://github.com/pinelis141/CidadeViva/issues/21). Somente após aceitação física encerrar o marco.
 - **Próximo sistema (v0.3.0):** demanda residencial/comercial/industrial e regras econômicas mais realistas — começar após confirmar que salvamentos e a troca entre cidades funcionam.
 
+## Atualização — 0.3.0-alpha1 (demanda e economia)
+
+**Implementação aprovada em CI:** [PR #22](https://github.com/pinelis141/CidadeViva/pull/22). Os sistemas de economia e crescimento estão em Java puro, com regras determinísticas e formato de salvamento original preservado.
+
+| Item | Implementação | Pendente |
+|---|---|---|
+| CV-013 — demanda R/C/I | **Implementada** primeira fórmula com pressão de emprego e lotes vazios, escores 5–95 | QA e balanceamento com dados de cidade real |
+| CV-014 — crescimento | **Parcial**: crescimento por demanda e acesso viário, níveis altos mais lentos | Abandono/decadência |
+| CV-015 — orçamento | **Parcial**: arrecadação, manutenção, saldo positivo/negativo | Ajuste de alíquotas pelo jogador |
+| CV-016 — progressão | Não implementado | Missões e desbloqueios |
+| CV-017 — explicação | **Parcial**: R/C/I, 3 barras, receitas/despesas e empregos no HUD | Painel econômico com explicações detalhadas |
+
+- Novo relatório `CityEconomy`; testes Java adicionais: **2.329 verificações**.
+- Futuros relatórios não alteram automaticamente arquivos CVT1/CVT2 nem os 3 slots.
+- QA físico para validar a tipografia, demanda, saldo, construção, troca de cidades e salvamento: [issue #23](https://github.com/pinelis141/CidadeViva/issues/23).
+- [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md) e [QA-ANDROID-0.3.0-alpha1.md](QA-ANDROID-0.3.0-alpha1.md).
+
+**A Alpha 1 está implementada, mas o marco 0.3.0 continua aberto.**
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
