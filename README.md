@@ -15,6 +15,13 @@ City builder isométrico original, offline. **Não utiliza Godot.** O repositór
 
 **AVISO:** prévia de 0.2.0, ainda sem atlas de pixel art ou arte final. Testes automáticos e build Android não substituem a validação em celular real.
 
+
+## Importante: instalação e saves dos APKs de testes
+
+A partir desta prévia, o APK debug usa identificador **`br.com.cidadeviva.game.dev`** e aparece como **Cidade Viva Teste**. Ele pode ser instalado **ao lado** do APK v0.1.1 (`br.com.cidadeviva.game`), que permanece com seus salvamentos e dados. Os dados **não migram automaticamente** entre os dois aplicativos, pois o Android os isola por identificador. **Não desinstale a v0.1.1 para testar esta versão** se quiser preservar seu progresso.
+
+Novas compilações de teste do Cidade Viva usam uma assinatura debug estável, compartilhada apenas para a distribuição de builds DEV. A chave de desenvolvimento está no repositório **de propósito** e não deve ser confundida com uma chave de publicação; o aplicativo final precisa de uma **chave release privada** e do ID de produção.
+
 ## Recursos já existentes desde o MVP
 
 - Mapa procedural isométrico **48×48** com vegetação e água.
