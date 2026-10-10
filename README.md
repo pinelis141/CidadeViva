@@ -1,6 +1,6 @@
 # Cidade Viva — Java / libGDX / Android
 
-**Versão de testes: 0.2.0-alpha2** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.
+**Versão de testes: 0.2.0-alpha3** — interface corrigida, indicadores de zonas sem rua e primeiros sprites pixel art originais.
 
 City builder isométrico original, offline. **Não utiliza Godot.** O repositório do Pixel Chess é separado e não deve ser modificado por este projeto.
 
@@ -44,13 +44,33 @@ gradle :android:assembleDebug
 
 O APK debug é para testes e não pode ser distribuído como release da Play Store sem assinatura release. Confira [QA-ANDROID-0.2.0-alpha1.md](QA-ANDROID-0.2.0-alpha1.md) para o teste manual.
 
-## Atualizações da 0.2.0-alpha2
+## Atualizações da 0.2.0-alpha3
 
 - **45 sprites isométricos originais** em atlas PNG 576 × 768; 16 combinações de vias, três categorias de edifícios × três níveis × duas variações; água, vegetação e terrenos variáveis.
 - Renderização com `SpriteBatch` e textura `Nearest`, usando um atlas carregado apenas uma vez; regras da cidade continuam livres de libGDX.
 - HUD superior ampliado para exibir `ZONAS SEM RUA`; barra inferior com rótulos altos, ícones diferenciados e áreas clicáveis revisadas.
 - Zonas sem rua adjacente são destacadas em âmbar; tocar um terreno zoneado mostra tipo, nível e acesso.
 - Testes Java adicionais verificam a contagem de zonas sem estrada, mudança de status, persistência e que um lote sem acesso permanece sem edifício.
-- **Documentação:** [`ART-DIRECTION.md`](ART-DIRECTION.md) e [`QA-ANDROID-0.2.0-alpha2.md`](QA-ANDROID-0.2.0-alpha2.md).
+- **Documentação:** [`ART-DIRECTION.md`](ART-DIRECTION.md) e [`QA-ANDROID-0.2.0-alpha3.md`](QA-ANDROID-0.2.0-alpha3.md).
 
 A versão de teste mantém **package separado** (`br.com.cidadeviva.game.dev`) e assinatura **apenas de desenvolvimento**, para preservar o app antigo. Não usar chave DEV para publicação. A arte ainda será ampliada e refinada antes do lançamento.
+
+## Alpha 3: visual de terreno e arquitetura
+
+- Atlas integrado com **80 sprites pixel art originais**: novas árvores, água com
+  litoral em 16 configurações, grama em manchas e terceira variação de prédios.
+- Renderizador calcula a **máscara de água** sem alterar regras de custo/estrada.
+- Novos mapas geram lagos conectados. **Cidades já salvas não terão o terreno
+  recriado nem substituído** após atualizar — isto evita perda de progresso.
+- Fundo verde-escuro fosco ao afastar a câmera até as bordas do mapa.
+- Arquitetura por categoria/nível, sprites selecionados deterministicamente.
+
+### Como testar
+
+1. Atualize o app **Cidade Viva Teste** com o APK de debug Alpha 3, sem desinstalar.
+2. Confirme que a cidade antiga abre sem mudar zonas/edifícios e que SALVAR/ABRIR preserva os dados.
+3. Observe variações de gramado, árvores e prédios, e afaste o zoom para avaliar o fundo.
+4. As duas novas formações de lagos só surgem em cidades **novas**. Por enquanto,
+   falta menu seguro para abrir outro slot; não é necessário apagar dados do app.
+5. Testes lógicos: `bash tools/test-core.sh`; verificar arte:
+   `python3 tools/verify_atlas.py`; compilar via GitHub Actions.

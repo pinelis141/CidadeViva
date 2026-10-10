@@ -6,11 +6,11 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-/** One reproducible, original nearest-neighbor atlas (45 sprites; 72x128 each). */
+/** Original, reproducible 80-sprite atlas; visual indices never enter saves. */
 public final class PixelArtAtlas {
     private static final int CELL_W=72, CELL_H=128, COLS=8;
     private final Texture texture;
-    private final TextureRegion[] regions=new TextureRegion[45];
+    private final TextureRegion[] regions=new TextureRegion[80];
 
     public PixelArtAtlas() {
         texture=new Texture(Gdx.files.internal("city/atlas.png"));
@@ -24,23 +24,31 @@ public final class PixelArtAtlas {
     }
 
     /** Stable visual variations do not affect saves, economy or terrain collisions. */
-    public static int tileSprite(TileType type,int roadMask,int x,int y) {
+    public static int tileSprite(TileType type,int roadMask,int waterMask,int x,int y) {
         switch(type) {
-            case WATER: return 3+Math.floorMod(x*5+y*3,2);
+            case WATER: return 45+(waterMask&15);
             case ROAD: return 8+(roadMask&15);
             case RESIDENTIAL: return 5;
             case COMMERCIAL: return 6;
             case INDUSTRIAL: return 7;
-            default: return Math.floorMod(x*41+y*17+x*y*3,3);
+            default: {
+                // Coherent patches, scattered wildflowers and worn grass, not a
+                // different green on each successive checkerboard diamond.
+                int clusters=Math.floorMod((x/4)*41+(y/5)*17+(x/4)*(y/5)*3,13);
+                if (clusters==3 || clusters==8) return 67+Math.floorMod(x*5+y*7,4);
+                return Math.floorMod((x/5)*17+(y/5)*29,3);
+            }
         }
     }
     public static int treeSprite(int x,int y) {
-        return 24+Math.floorMod(x*13+y*29,3);
+        int variant=Math.floorMod(x*13+y*29+(x/3)*7,9);
+        return variant<3?24+variant:61+(variant-3);
     }
     public static int buildingSprite(TileType type,int level,int x,int y) {
         int kind=type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?1:2;
         int capped=Math.max(1,Math.min(level,3));
-        return 27+kind*6+(capped-1)*2+Math.floorMod(x*7+y*11,2);
+        int variant=Math.floorMod(x*7+y*11+(x*y),3);
+        return variant==2 ? 71+kind*3+(capped-1) : 27+kind*6+(capped-1)*2+variant;
     }
     public void dispose() {texture.dispose();}
 }
