@@ -15,6 +15,24 @@
 - **Tamanho:** P (pequeno), M (médio), G (grande). São indicadores de complexidade, não prazos.
 - **DoD (definition of done):** código integrado, testes de regras passando, build Android debug com CI verde, comportamento verificado em Android quando envolver UI, sem regressão em salvar/abrir ou controles. Publicação requer validação adicional de release assinada.
 
+## Atualização de execução — 0.1.1 (09/10/2026)
+
+**Código incorporado à branch principal:** PR #14, após CI verde na branch `feature/v0.1.1-controles-saves`.  
+**APK de testes disponível:** `CidadeViva-0.1.1-Android.apk`.  
+**Não substituir validação em Android por uma compilação bem-sucedida.**
+
+| Item | Estado após implementação | Pendência |
+|---|---|---|
+| CV-001 — smoke test no Android | **ABERTO** | Teste manual físico com gravação de evidências. |
+| CV-002 — HUD e botões | **IMPLEMENTADO / QA PENDENTE** | Confirmar acerto de regiões em retrato e paisagem. |
+| CV-003 — câmera e zoom | **IMPLEMENTADO / QA PENDENTE** | Validar zoom ancorado e seleção em dispositivo real. |
+| CV-004 — save e backup | **IMPLEMENTADO / QA PENDENTE** | CVT2 + CRC32, backup e leitura CVT1 testados em Java; validar no armazenamento do Android. |
+| CV-005 — testes e CI | **IMPLEMENTADO** | Testes de regressão Java e Android debug compilado no Actions. |
+| CV-006 — pausa, velocidade, ajuda | **IMPLEMENTADO / QA PENDENTE** | Validar legibilidade e controles no aparelho. |
+
+**Checklist físico:** [QA-ANDROID-0.1.1.md](QA-ANDROID-0.1.1.md).  
+**Critério de conclusão do marco A:** todos os itens devem estar validados; portanto **marco A ainda não está encerrado**.
+
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
