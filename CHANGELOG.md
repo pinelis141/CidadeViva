@@ -1,3 +1,14 @@
+# Changelog
+
+## 0.3.0-alpha1 — demanda, empregos e orçamento (2026-10-10)
+
+- Relatório `CityEconomy` com pressão de demanda residencial/comercial/industrial (5..95).
+- Crescimento condicionado a demanda, rua adjacente e probabilidade decrescente por nível.
+- Receita de zonas, manutenção viária, saldo diário (positivo ou negativo), desemprego e vagas.
+- HUD com três barras R/C/I, receita, custos e informação ao tocar em uma zona.
+- Saves CVT1/CVT2 e três slots independentes mantidos sem migração destrutiva.
+- Testes Java e CI Android; validação no aparelho ainda pendente.
+
 # Cidade Viva — histórico de alterações
 
 ## 0.2.0 Alpha 4 — Vários espaços de cidade

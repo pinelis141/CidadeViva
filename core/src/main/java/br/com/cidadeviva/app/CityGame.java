@@ -2,6 +2,7 @@ package br.com.cidadeviva.app;
 
 import br.com.cidadeviva.sim.City;
 import br.com.cidadeviva.sim.CityPersistence;
+import br.com.cidadeviva.sim.CityEconomy;
 import br.com.cidadeviva.sim.Tile;
 import br.com.cidadeviva.sim.TileType;
 import br.com.cidadeviva.input.HudLayout;
@@ -362,6 +363,7 @@ public final class CityGame extends ApplicationAdapter {
 
     private void drawHud() {
         float u = uiScale;
+        CityEconomy economy = city.economy();
         float top = HudLayout.TOP_HEIGHT*u;
         float bottom = HudLayout.BOTTOM_HEIGHT*u;
         Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -399,6 +401,17 @@ public final class CityGame extends ApplicationAdapter {
             shapes.setColor(active?rgb(155,113,72):rgb(49,76,83));
             shapes.rect(bx,by,bw,(HudLayout.ACTION_HEIGHT-3)*u);
         }
+        // Demand meters: their bar length is the simulation's actual 0..100 score.
+        float meterY=h-139*u, meterWidth=(w-36*u)/3f;
+        int[] demand={economy.residentialDemand,economy.commercialDemand,economy.industrialDemand};
+        Color[] demandColor={rgb(96,198,129),rgb(96,170,225),rgb(222,169,92)};
+        for (int i=0;i<3;i++) {
+            float bx=12*u+i*(meterWidth+6*u);
+            shapes.setColor(rgb(52,67,67));
+            shapes.rect(bx,meterY,meterWidth,6*u);
+            shapes.setColor(demandColor[i]);
+            shapes.rect(bx,meterY,meterWidth*demand[i]/100f,6*u);
+        }
         if (helpVisible) {
             shapes.setColor(0f,0f,0f,0.88f);
             shapes.rect(0,0,w,h);
@@ -411,14 +424,22 @@ public final class CityGame extends ApplicationAdapter {
         batch.begin();
         font.setColor(rgb(235,243,227));
         font.getData().setScale(1.20f*u);
-        font.draw(batch,"CIDADE VIVA  0.2.0a4",12*u,h-19*u);
+        font.draw(batch,"CIDADE VIVA  0.3.0a1",12*u,h-19*u);
         font.getData().setScale(1.10f*u);
         font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
-        font.draw(batch,"EMP "+city.jobs()+" | CAIXA/DIA "+city.lastIncome()+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);
+        font.draw(batch,"EMP "+economy.jobs+" | DESEMP "+economy.unemployed+
+            " | VAGAS "+economy.jobVacancies+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);
+        font.getData().setScale(1.00f*u);
+        font.draw(batch,"REC R$"+economy.grossRevenue+" - CUSTO R$"+economy.expenses+
+            " = "+(economy.net>=0?"+":"")+economy.net+"/DIA",12*u,h-88*u);
         int unserved=city.unservedZones();
         font.setColor(unserved>0?rgb(253,190,114):rgb(152,220,168));
         font.getData().setScale(1.05f*u);
-        font.draw(batch,unserved>0?"ZONAS SEM RUA: "+unserved+"  |  Toque no lote":"ZONAS COM ACESSO A RUA",12*u,h-89*u);
+        font.draw(batch,unserved>0?"ZONAS SEM RUA: "+unserved+"  |  Toque no lote":"ZONAS COM ACESSO A RUA",12*u,h-108*u);
+        font.setColor(rgb(227,235,218));
+        font.getData().setScale(0.99f*u);
+        font.draw(batch,"DEMANDA  R "+economy.residentialDemand+"   C "+economy.commercialDemand+
+            "   I "+economy.industrialDemand,12*u,h-126*u);
         font.setColor(rgb(235,243,227));
         font.setColor(rgb(243,226,158));
         font.getData().setScale(0.90f*u);
@@ -433,7 +454,8 @@ public final class CityGame extends ApplicationAdapter {
                 i==2?(paintMode?"PINTAR":"MOVER"):ACTION_LABELS[i];
             glyph.setText(font,text);
             float bw=w/HudLayout.ACTIONS;
-            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,h-136*u);
+            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,
+                h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT*0.75f)*u);
         }
         font.getData().setScale(1.22f*u);
         for (int i=0;i<HudLayout.TOOLS;i++) {
@@ -462,7 +484,7 @@ public final class CityGame extends ApplicationAdapter {
             font.draw(batch,"MOVER: arraste a camera",x,y-67*u);
             font.draw(batch,"PINTAR: arraste ruas e areas",x,y-96*u);
             font.draw(batch,"Dois dedos: mover/zoom",x,y-125*u);
-            font.draw(batch,"CENTRAR: volta para a cidade",x,y-153*u);
+            font.draw(batch,"DEMANDA R/C/I: barra mostra procura",x,y-153*u);
             font.draw(batch,"Toque na tela para fechar",x,y-182*u);
         }
         if (slotsVisible) drawSlotsText(u);
