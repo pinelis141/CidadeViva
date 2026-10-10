@@ -33,6 +33,21 @@
 **Checklist físico:** [QA-ANDROID-0.1.1.md](QA-ANDROID-0.1.1.md).  
 **Critério de conclusão do marco A:** todos os itens devem estar validados; portanto **marco A ainda não está encerrado**.
 
+## Atualização de desenvolvimento — 0.2.0-alpha1
+
+A primeira etapa do marco visual e de construção foi integrada na `main` por meio do **PR #15**.
+
+| Tarefa | Estado de implementação | Aceite |
+|---|---|---|
+| CV-007 — ruas por arrasto | Código concluído; ruas 4-conectadas sem duplicidade | Teste manual Android pendente |
+| CV-008 — zoneamento por área | Código concluído; zonas e demolição em retângulos 16×16 com prévia e pagamento atômico | Teste manual Android pendente |
+| CV-009 — junções viárias | Marcas de conexão calculadas por vizinhos (procedural) | Arte final e teste Android pendentes |
+| CV-010 — pipeline de arte | **Não iniciado** | Atlas, camadas e licenças faltam |
+| CV-011 — sprites pixel art | **Não iniciado** | Grama, água, vegetação, prédios e ruas finais faltam |
+| CV-012 — HUD e detalhes | Parcial: modo PINTAR/MOVER, prévia e botão CENTRAR | Ajustes de legibilidade e painéis faltam |
+
+A versão `0.2.0-alpha1` **não é a v0.2.0 final**. O marco continua aberto até haver sprites originais, acabamento e validação em dispositivo. O QA geral da v0.1.1 também permanece pendente de interação em aparelho real.
+
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
