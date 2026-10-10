@@ -1,3 +1,12 @@
+# 0.3.0-alpha2 — Impostos e orçamento
+
+- Painel ECON com impostos de 5 a 20%, receita residencial/comercial/industrial, manutenção de ruas e lotes, saldo e demanda.
+- Persistência por cidade dos impostos e dos dias consecutivos de demanda fraca (CVT3, CRC32, compatível para leitura de CVT1/CVT2).
+- Abandono gradual de prédios após 12 dias de baixa demanda; prédios isolados sem estrada também podem declinar.
+- Atalho ECON testado em diferentes resoluções e gestos bloqueados sobre o modal.
+- Pacote de desenvolvimento `.dev`, mesma assinatura, versionCode 8.
+- Testes de migração, corrupção, independência de slots, balanço financeiro e crescimento/abandono determinístico.
+
 # Changelog
 
 ## 0.3.0-alpha1 — demanda, empregos e orçamento (2026-10-10)

@@ -9,18 +9,20 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.CRC32;
 
-/** Compact, versioned local format. V2 adds CRC32; V1 remains readable. */
+/** CVT3 persists tax rates and low-demand streaks; CVT1/CVT2 remain readable. */
 public final class CityPersistence {
     private static final int V1 = 0x43565431; // CVT1
     private static final int V2 = 0x43565432; // CVT2
+    private static final int V3 = 0x43565433; // CVT3
+    private static final int SETTINGS_LENGTH = 3 + 3 * Integer.BYTES;
     private static final int HEADER_LENGTH = 6 * Integer.BYTES;
     private static final int TILE_LENGTH = City.WIDTH * City.HEIGHT * 2;
     private CityPersistence() { }
 
     public static void save(City city,OutputStream destination) throws IOException {
-        ByteArrayOutputStream payload = new ByteArrayOutputStream(HEADER_LENGTH+TILE_LENGTH+4);
+        ByteArrayOutputStream payload = new ByteArrayOutputStream(HEADER_LENGTH+TILE_LENGTH+SETTINGS_LENGTH+4);
         DataOutputStream out = new DataOutputStream(payload);
-        out.writeInt(V2);
+        out.writeInt(V3);
         out.writeInt(City.WIDTH);
         out.writeInt(City.HEIGHT);
         out.writeInt(city.money());
@@ -31,6 +33,10 @@ public final class CityPersistence {
             out.writeByte(tile.type.ordinal());
             out.writeByte(tile.level);
         }
+        for(TileType t:new TileType[]{TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL})
+            out.writeByte(city.taxRate(t));
+        for(TileType t:new TileType[]{TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL})
+            out.writeInt(city.lowDemandDays(t));
         out.flush();
         byte[] data=payload.toByteArray();
         CRC32 crc=new CRC32();
@@ -42,7 +48,7 @@ public final class CityPersistence {
     }
 
     public static City load(InputStream source) throws IOException {
-        ByteArrayOutputStream buffer=new ByteArrayOutputStream(HEADER_LENGTH+TILE_LENGTH+4);
+        ByteArrayOutputStream buffer=new ByteArrayOutputStream(HEADER_LENGTH+TILE_LENGTH+SETTINGS_LENGTH+4);
         byte[] chunk=new byte[1024];
         int n;
         while ((n=source.read(chunk))!=-1) {
@@ -53,10 +59,10 @@ public final class CityPersistence {
         if (data.length<4) throw new IOException("Arquivo de salvamento incompleto");
         DataInputStream in=new DataInputStream(new ByteArrayInputStream(data));
         int format=in.readInt();
-        if (format!=V1 && format!=V2) throw new IOException("Versão de salvamento incompatível");
-        int expected=HEADER_LENGTH+TILE_LENGTH+(format==V2?4:0);
+        if (format!=V1 && format!=V2 && format!=V3) throw new IOException("Versão de salvamento incompatível");
+        int expected=HEADER_LENGTH+TILE_LENGTH+(format==V3?SETTINGS_LENGTH:0)+(format==V1?0:4);
         if (data.length!=expected) throw new IOException("Arquivo truncado ou tamanho inválido");
-        if (format==V2) {
+        if (format!=V1) {
             CRC32 crc=new CRC32();
             crc.update(data,0,data.length-4);
             long stored=((long)(data[data.length-4]&0xff)<<24)
@@ -80,8 +86,20 @@ public final class CityPersistence {
                 throw new IOException("Tile inválido");
             incoming[x][y]=new Tile(all[type],level);
         }
+        int[] rates={10,10,10};
+        int[] weakDays={0,0,0};
+        if(format==V3) {
+            for(int i=0;i<3;i++) {
+                rates[i]=in.readUnsignedByte();
+                if(rates[i]<5 || rates[i]>20)throw new IOException("Aliquota do salvamento invalida");
+            }
+            for(int i=0;i<3;i++) {
+                weakDays[i]=in.readInt();
+                if(weakDays[i]<0 || weakDays[i]>1000000)throw new IOException("Historico de demanda invalido");
+            }
+        }
         City city=new City();
-        city.restore(incoming,money,day,income);
+        city.restore(incoming,money,day,income,rates,weakDays);
         return city;
     }
 }

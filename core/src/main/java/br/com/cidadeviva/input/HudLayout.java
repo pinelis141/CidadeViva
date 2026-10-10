@@ -23,6 +23,15 @@ public final class HudLayout {
             || y <= TOP_HEIGHT * scale || y >= height - BOTTOM_HEIGHT * scale;
     }
 
+    /** Top-right shortcuts: economy (0), cities (1), camera recenter (2). */
+    public static int quickActionAt(float x,float y,float width,float scale) {
+        if(y<0 || y>55*scale)return -1;
+        if(x>=width-357*scale && x<width-248*scale)return 0;
+        if(x>=width-244*scale && x<width-120*scale)return 1;
+        if(x>=width-117*scale && x<width-5*scale)return 2;
+        return -1;
+    }
+
     public static int actionAt(float x, float y, float width, float scale) {
         if (x < 0 || x >= width || y < ACTION_TOP * scale
             || y >= (ACTION_TOP + ACTION_HEIGHT) * scale) return -1;
