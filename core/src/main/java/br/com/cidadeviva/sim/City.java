@@ -115,7 +115,7 @@ public final class City {
             case RESIDENTIAL: return 80;
             case COMMERCIAL: return 110;
             case INDUSTRIAL: return 150;
-            case GRASS: return 10; // remover
+            case GRASS: return 0; // saneamento fiscal: remover estruturas e gratis
             default: return 0;
         }
     }
@@ -125,6 +125,7 @@ public final class City {
         if (!inBounds(x, y)) return "Fora do mapa";
         Tile existing = tiles[x][y];
         if (type == TileType.GRASS) {
+            if (existing.type == TileType.WATER) return "Não pode remover água";
             if (existing.type == TileType.GRASS) return "Área vazia";
             if (money < cost(type)) return "Dinheiro insuficiente";
             money -= cost(type);
@@ -145,7 +146,7 @@ public final class City {
     public boolean canBuild(int x,int y,TileType type) {
         if (!inBounds(x,y)) return false;
         TileType current=tiles[x][y].type;
-        if (type==TileType.GRASS) return current!=TileType.GRASS;
+        if (type==TileType.GRASS) return current!=TileType.GRASS && current!=TileType.WATER;
         if (type!=TileType.ROAD && !type.isZone()) return false;
         return current==TileType.GRASS || current==TileType.FOREST;
     }
@@ -305,6 +306,15 @@ public final class City {
             float rate=t.level==0?0.075f+demand*0.0026f:
                 t.level==1?0.006f+demand*0.00053f:
                 0.002f+demand*0.00025f;
+            // A business with too many empty jobs does not expand as if every
+            // workplace were staffed. Likewise a fiscal crisis slows investment.
+            if(t.type!=TileType.RESIDENTIAL && report.operationalJobs>0) {
+                int vacantShare=report.jobVacancies*100/report.operationalJobs;
+                if(vacantShare>33) rate*=0.25f;
+                else if(vacantShare>17) rate*=0.60f;
+            }
+            if(report.net<0 && money<3000)rate*=0.38f;
+            if(report.qualityOfLife<45)rate*=0.55f;
             if(growthRoll(day,x,y,0)<rate) {
                 int from=t.level++;
                 if(from==0)occupiedToday++;

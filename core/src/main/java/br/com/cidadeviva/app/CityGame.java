@@ -657,7 +657,7 @@ public final class CityGame extends ApplicationAdapter {
         label(missing>0?"! "+missing+" ZONAS SEM RUA":
             nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
             missing>0?amber:good,(w-32*u)*0.48f);
-        String labor="DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
+        String labor="QUAL "+eco.qualityOfLife+"  |  DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
         for(int i=0;i<HudLayout.ACTIONS;i++) {
             String text=(i==0&&simulationPaused)?"SEGUIR":i==1?simulationSpeed+"X":
@@ -790,8 +790,10 @@ public final class CityGame extends ApplicationAdapter {
         float x=econX(u),y=econY(u),ww=econW(u);
         Color white=rgb(236,246,239),sub=rgb(168,198,205);
         label("ECONOMIA",x+21*u,y+520*u,1.62f,white,ww-42*u);
-        label("Ajuste os impostos de cada setor: 5% a 20%",
+        label("Taxas de 5% a 20%: excesso reduz arrecadacao",
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
+        label("QUALIDADE "+report.qualityOfLife+"/100  |  TRABALHANDO "+report.employed+
+            "/"+report.population,x+21*u,y+465*u,0.95f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
             int demand=report.demand(TAX_TYPES[i]);
@@ -812,7 +814,7 @@ public final class CityGame extends ApplicationAdapter {
         label("DESPESAS",x+22*u,y+118*u,1.12f,rgb(244,183,113),ww-44*u);
         label("R$ "+report.expenses+" / dia",x+ww*0.63f,y+118*u,
             1.18f,white,ww*0.34f);
-        label("Ruas "+report.roadMaintenance+" | Terrenos "+report.zoneMaintenance,
+        label("Ruas "+report.roadMaintenance+" | Zonas/Predios "+report.zoneMaintenance,
             x+22*u,y+97*u,0.94f,sub,ww-44*u);
         label("SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
         label((report.net>=0?"+":"")+"R$ "+report.net,x+ww*0.55f,y+70*u,1.22f,

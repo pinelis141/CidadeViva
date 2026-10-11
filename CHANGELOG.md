@@ -1,3 +1,14 @@
+## 0.4.0-alpha5-economia — 11/10/2026
+
+- Rebalanceamento de demanda R/C/I por relações proporcionais de moradores, empregos e oferta de terrenos, com penalidade de raiz quadrada.
+- Arrecadação apenas de atividade de empregos efetivamente ocupados; desempregados têm menor contribuição residencial e zonas sem rua deixam de ser tributadas como operacionais.
+- Manutenção de ruas R$ 3/dia, lote R$ 2/dia e custo crescente ao quadrado para cada edifício de nível 1–3.
+- Taxas 5–20% com retorno fiscal decrescente após 10%, evitando estratégia dominante de 20%.
+- Índice derivado de qualidade urbana; baixa disponibilidade financeira, baixa qualidade e vagas ociosas desaceleram crescimento.
+- Demolição gratuita para reduzir risco de travar uma cidade em falência.
+- HUD e painel ECON indicam qualidade de vida e moradores empregados; documentação de cenários + 23.505 verificações extras.
+- CVT3, 3 cidades, atlas de 125 sprites e pacote Android DEV mantidos.
+
 ## 0.4.0-alpha4-visual — 11/10/2026
 
 - [CORRIGIDO] Toda construção habitada usa agora a **mesma família de nove sprites V3**, com três estilos de progressão por setor. As fachadas antigas roxas deixam de aparecer; os sprites legados permanecem no atlas, sem apagar dados.
