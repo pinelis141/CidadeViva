@@ -21,6 +21,20 @@
 - [ ] Próxima iteração: variedade de veículos/personagens em sprite art, efeitos sonoros discretos, objetivos/marcos de desenvolvimento e revisão de legibilidade HUD no aparelho.
 
 Ver [DESIGN-CIDADE-VIVA-0.4.md](DESIGN-CIDADE-VIVA-0.4.md) e [QA-ANDROID-0.4.0-alpha1-life.md](QA-ANDROID-0.4.0-alpha1-life.md). O tráfego **ainda é apenas visual** e não simula transportes ou engarrafamentos; CVT3, backup, impostos e três cidades continuam intactos.
+## Atualização — 0.4.0-alpha2 (identidade visual e metas)
+
+**Feedback do teste Alpha 1:** os números evoluem, mas bairros ainda parecem iguais; o centro construído fica pequeno na tela e falta recompensa por progresso.
+
+- [x] Expandido o atlas de 80 para **116 sprites originais**: 36 edifícios adicionais (4 estilos × 3 setores × 3 níveis), sem mudar índices antigos.
+- [x] Novas fachadas e telhados determinísticos por posição; evolução continua visível sem alterar edifícios salvos.
+- [x] `CityFocus`: reenquadramento no centro construído e zoom adaptativo ao abrir/trocar cidade e no botão CENTRAR.
+- [x] `CityMilestones`: avisos temporários quando população real cruza 100, 250, 500, 1.000 etc.; objetivo seguinte no HUD.
+- [x] Evitada sobreposição do texto BAIXA/MEDIA/ALTA com barras R/C/I.
+- [x] Testes Java **66.764 verificações novas**, atlas 116 sprites validado, Android CI verde; [PR #30](https://github.com/pinelis141/CidadeViva/pull/30) integrado.
+- [ ] [Aceite físico Android #31](https://github.com/pinelis141/CidadeViva/issues/31): variedade perceptível, centro da câmera, legibilidade, desempenho e notificações.
+- [ ] Iterar economia, objetivos mais profundos e renderização de personagens conforme vídeo de QA.
+
+CVT3, 3 slots, impostos, animações de Alpha 1 e assinatura Android DEV preservados. **Não desinstalar o aplicativo de testes.**
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
