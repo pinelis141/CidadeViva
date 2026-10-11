@@ -60,6 +60,7 @@ public final class CityGame extends ApplicationAdapter {
     private boolean savesReady = false;
     private boolean slotsVisible = false;
     private boolean economyVisible = false;
+    private boolean inspectorVisible = false;
     private int selectedSlot = -1;
     private CitySlots.SlotInfo[] slotInfo = new CitySlots.SlotInfo[CitySlots.COUNT];
     private TileType selected = TileType.ROAD;
@@ -88,6 +89,7 @@ public final class CityGame extends ApplicationAdapter {
     private boolean pendingRecenter = false;
     private int pendingQuickAction = -1;
     private boolean secondPointerOnHud = false;
+    private boolean pendingInspector = false;
 
     private static final Map<Integer,Color> PALETTE = new HashMap<>();
     private static Color rgb(int r,int g,int b) {
@@ -363,140 +365,240 @@ public final class CityGame extends ApplicationAdapter {
         }
     }
 
+    /** Styled flat UI components, rendered without external assets or text allocations. */
+    private void card(float x,float y,float width,float height,Color accent,boolean active) {
+        shapes.setColor(active?rgb(91,117,112):rgb(44,66,77));
+        shapes.rect(x,y,width,height);
+        shapes.setColor(active?rgb(34,56,65):rgb(25,43,53));
+        shapes.rect(x+1.5f*uiScale,y+1.5f*uiScale,
+            Math.max(0,width-3*uiScale),Math.max(0,height-3*uiScale));
+        shapes.setColor(accent);
+        shapes.rect(x,y,3.0f*uiScale,height);
+    }
+
+    private void label(String value,float x,float base,float scale,Color color,float allowed) {
+        if(allowed<8)return;
+        float actual=scale*uiScale;
+        font.getData().setScale(actual);
+        glyph.setText(font,value);
+        while(glyph.width>allowed && actual>0.70f*uiScale) {
+            actual-=0.06f*uiScale;
+            font.getData().setScale(actual);
+            glyph.setText(font,value);
+        }
+        if(glyph.width>allowed) {
+            String shortened=value;
+            while(shortened.length()>2 && glyph.width>allowed) {
+                shortened=shortened.substring(0,shortened.length()-2)+".";
+                glyph.setText(font,shortened);
+            }
+            value=shortened;
+        }
+        font.setColor(color);
+        font.draw(batch,value,x,base);
+    }
+
+    private void centered(String value,float left,float width,float base,float scale,Color color) {
+        float actual=scale*uiScale;
+        font.getData().setScale(actual);
+        glyph.setText(font,value);
+        while(glyph.width>width-10*uiScale && actual>0.72f*uiScale) {
+            actual-=0.06f*uiScale;
+            font.getData().setScale(actual);
+            glyph.setText(font,value);
+        }
+        font.setColor(color);
+        font.draw(batch,value,left+Math.max(3*uiScale,(width-glyph.width)*0.5f),base);
+    }
+
+    private String moneyShort(int money) {
+        long absolute=Math.abs((long)money);
+        if(absolute>=1000000L)return (money<0?"-":"")+"R$ "+(absolute/1000000)+"M";
+        if(absolute>=100000L)return (money<0?"-":"")+"R$ "+(absolute/1000)+"mil";
+        return (money<0?"-":"")+"R$ "+absolute;
+    }
+
     private void drawHud() {
-        float u = uiScale;
-        CityEconomy economy = city.economy();
-        float top = HudLayout.TOP_HEIGHT*u;
-        float bottom = HudLayout.BOTTOM_HEIGHT*u;
+        float u=uiScale;
+        CityEconomy eco=city.economy();
+        float top=HudLayout.TOP_HEIGHT*u;
+        float bottom=HudLayout.BOTTOM_HEIGHT*u;
+        Color white=rgb(232,243,237),muted=rgb(159,189,192);
+        Color good=rgb(112,214,148),bad=rgb(246,137,119);
+        Color cyan=rgb(115,191,232),amber=rgb(242,183,96);
+        Color[] sector={good,cyan,amber};
+        int[] demand={eco.residentialDemand,eco.commercialDemand,eco.industrialDemand};
+        String[] demandLabel={"RESIDENCIAL","COMERCIAL","INDUSTRIAL"};
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA,GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapes.setProjectionMatrix(uiProjection);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(rgb(24,34,41));
+        shapes.setColor(0.055f,0.10f,0.135f,0.94f);
         shapes.rect(0,h-top,w,top);
+        shapes.setColor(0.055f,0.10f,0.135f,0.93f);
         shapes.rect(0,0,w,bottom);
-        shapes.setColor(rgb(70,153,112));
-        shapes.rect(0,h-top,w,3*u);
-        shapes.setColor(rgb(49,67,72));
+        shapes.setColor(rgb(102,174,169));
+        shapes.rect(0,h-top,w,2*u);
         shapes.rect(0,bottom,w,2*u);
-
-        float buttonWidth = w/HudLayout.TOOLS;
-        for (int i=0;i<HudLayout.TOOLS;i++) {
-            float bx=i*buttonWidth+4*u;
-            float bw=buttonWidth-8*u;
+        // Permanent navigation, separated from information.
+        float[] shortcutX={w-357*u,w-244*u,w-117*u};
+        float[] shortcutW={109*u,124*u,112*u};
+        for(int i=0;i<3;i++)card(shortcutX[i],h-50*u,shortcutW[i],42*u,
+            i==0?good:i==1?cyan:rgb(161,173,187),false);
+        // Readable primary statistics.
+        float gap=6*u,margin=10*u,statWidth=(w-2*margin-3*gap)/4f;
+        Color[] statColors={good,cyan,rgb(191,204,215),eco.net>=0?good:bad};
+        for(int i=0;i<4;i++)card(margin+i*(statWidth+gap),h-108*u,statWidth,52*u,statColors[i],false);
+        // Three real demand score cards, each with number and visible progress meter.
+        float demandWidth=(w-20*u-2*gap)/3f;
+        for(int i=0;i<3;i++) {
+            float bx=10*u+i*(demandWidth+gap);
+            card(bx,h-169*u,demandWidth,55*u,sector[i],false);
+            shapes.setColor(rgb(54,76,84));
+            shapes.rect(bx+10*u,h-157*u,demandWidth-20*u,8*u);
+            shapes.setColor(demand[i]>=60?good:demand[i]>=30?amber:bad);
+            shapes.rect(bx+10*u,h-157*u,Math.max(0,demandWidth-20*u)*demand[i]/100f,8*u);
+        }
+        // Thin alert/diagnostics band.
+        shapes.setColor(rgb(30,52,60));
+        shapes.rect(10*u,h-191*u,w-20*u,18*u);
+        // Six large quick-action buttons.
+        float actionWidth=w/HudLayout.ACTIONS;
+        for(int i=0;i<HudLayout.ACTIONS;i++) {
+            float bx=i*actionWidth+3*u;
+            boolean active=(i==0&&simulationPaused)||(i==2&&paintMode);
+            card(bx,h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT-2)*u,
+                actionWidth-6*u,(HudLayout.ACTION_HEIGHT-6)*u,
+                active?amber:(i==4?good:rgb(93,137,155)),active);
+        }
+        // Tool dock: full card height, separate icon and baseline for name/cost.
+        float tw=w/HudLayout.TOOLS;
+        for(int i=0;i<HudLayout.TOOLS;i++) {
+            float bx=i*tw+4*u,bw=tw-8*u;
             boolean active=selected==tools[i];
-            shapes.setColor(active?rgb(235,215,144):rgb(53,69,78));
-            shapes.rect(bx,15*u,bw,88*u);
-            shapes.setColor(active?rgb(59,77,74):rgb(34,47,55));
-            shapes.rect(bx+2*u,17*u,bw-4*u,84*u);
-            drawToolIcon(i,bx+bw*0.5f,75*u,u);
+            card(bx,14*u,bw,(HudLayout.BOTTOM_HEIGHT-25)*u,
+                active?rgb(244,211,122):toolColors[i],active);
+            drawToolIcon(i,bx+bw*0.5f,77*u,1.18f*u);
         }
-        // Three top shortcuts, all distinct from the simulation HUD.
-        shapes.setColor(rgb(51,72,73));
-        shapes.rect(w-357*u,h-48*u,109*u,40*u); // economy
-        shapes.rect(w-244*u,h-48*u,124*u,40*u); // cities
-        shapes.rect(w-117*u,h-48*u,112*u,40*u); // center
-        for (int i=0;i<HudLayout.ACTIONS;i++) {
-            float bx=i*w/HudLayout.ACTIONS+3*u;
-            float by=h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT)*u;
-            float bw=w/HudLayout.ACTIONS-6*u;
-            boolean active=(i==0 && simulationPaused) || (i==2 && paintMode);
-            shapes.setColor(active?rgb(155,113,72):rgb(49,76,83));
-            shapes.rect(bx,by,bw,(HudLayout.ACTION_HEIGHT-3)*u);
+        // Tile inspector floating over map, with its own hit-test area.
+        if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
+           !slotsVisible && !economyVisible) {
+            float iy=(HudLayout.BOTTOM_HEIGHT+6)*u;
+            shapes.setColor(0.045f,0.10f,0.13f,0.94f);
+            shapes.rect(8*u,iy,w-16*u,HudLayout.INSPECTOR_HEIGHT*u);
+            shapes.setColor(amber);
+            shapes.rect(8*u,iy,4*u,HudLayout.INSPECTOR_HEIGHT*u);
+            card(w-59*u,iy+42*u,44*u,36*u,cyan,false);
         }
-        // Demand meters: their bar length is the simulation's actual 0..100 score.
-        float meterY=h-139*u, meterWidth=(w-36*u)/3f;
-        int[] demand={economy.residentialDemand,economy.commercialDemand,economy.industrialDemand};
-        Color[] demandColor={rgb(96,198,129),rgb(96,170,225),rgb(222,169,92)};
-        for (int i=0;i<3;i++) {
-            float bx=12*u+i*(meterWidth+6*u);
-            shapes.setColor(rgb(52,67,67));
-            shapes.rect(bx,meterY,meterWidth,6*u);
-            shapes.setColor(demandColor[i]);
-            shapes.rect(bx,meterY,meterWidth*demand[i]/100f,6*u);
+        if(helpVisible) {
+            shapes.setColor(0.01f,0.02f,0.03f,0.88f);shapes.rect(0,0,w,h);
+            card(15*u,h*0.5f-135*u,w-30*u,270*u,cyan,false);
         }
-        if (helpVisible) {
-            shapes.setColor(0f,0f,0f,0.88f);
-            shapes.rect(0,0,w,h);
-            shapes.setColor(rgb(34,54,59));
-            shapes.rect(15*u,h/2f-115*u,w-30*u,230*u);
-        }
-        if (slotsVisible) drawSlotsOverlay(u);
-        if (economyVisible) drawEconomyOverlay(u,economy);
+        if(slotsVisible)drawSlotsOverlay(u);
+        if(economyVisible)drawEconomyOverlay(u,eco);
         shapes.end();
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
-        font.setColor(rgb(235,243,227));
-        font.getData().setScale(1.20f*u);
-        font.draw(batch,"CIDADE VIVA  0.3.0a2",12*u,h-19*u);
-        font.getData().setScale(1.10f*u);
-        font.draw(batch,"R$ "+city.money()+"  |  POP "+city.residents()+"  |  DIA "+city.day(),12*u,h-43*u);
-        font.draw(batch,"EMP "+economy.jobs+" | DESEMP "+economy.unemployed+
-            " | VAGAS "+economy.jobVacancies+(simulationPaused?" | PAUSADO":""),12*u,h-66*u);
-        font.getData().setScale(1.00f*u);
-        font.draw(batch,"REC R$"+economy.grossRevenue+" - CUSTO R$"+economy.expenses+
-            " = "+(economy.net>=0?"+":"")+economy.net+"/DIA",12*u,h-88*u);
-        int unserved=city.unservedZones();
-        font.setColor(unserved>0?rgb(253,190,114):rgb(152,220,168));
-        font.getData().setScale(1.05f*u);
-        font.draw(batch,unserved>0?"ZONAS SEM RUA: "+unserved+"  |  Toque no lote":"ZONAS COM ACESSO A RUA",12*u,h-108*u);
-        font.setColor(rgb(227,235,218));
-        font.getData().setScale(0.99f*u);
-        font.draw(batch,"DEMANDA  R "+economy.residentialDemand+"   C "+economy.commercialDemand+
-            "   I "+economy.industrialDemand,12*u,h-126*u);
-        font.setColor(rgb(235,243,227));
-        font.setColor(rgb(243,226,158));
-        font.getData().setScale(0.90f*u);
-        font.getData().setScale(1.00f*u);
-        glyph.setText(font,"ECON");
-        font.draw(batch,"ECON",w-302*u-glyph.width*0.5f,h-22*u);
-        glyph.setText(font,"CIDADES");
-        font.draw(batch,"CIDADES",w-182*u-glyph.width*0.5f,h-22*u);
-        glyph.setText(font,"CENTRAR");
-        font.draw(batch,"CENTRAR",w-61*u-glyph.width*0.5f,h-22*u);
-        font.getData().setScale(1.12f*u);
-        for (int i=0;i<HudLayout.ACTIONS;i++) {
-            String text=(i==0 && simulationPaused)?"SEGUIR":i==1?(simulationSpeed+"X"):
+        if(!helpVisible && !slotsVisible && !economyVisible) {
+        label("CIDADE VIVA",13*u,h-20*u,1.42f,white,
+            Math.max(45,w-372*u));
+        label("GESTAO URBANA",14*u,h-38*u,0.82f,muted,
+            Math.max(45,w-372*u));
+        centered("ECON",shortcutX[0],shortcutW[0],h-25*u,1.20f,white);
+        centered("CIDADES",shortcutX[1],shortcutW[1],h-25*u,1.15f,white);
+        centered("CENTRAR",shortcutX[2],shortcutW[2],h-25*u,1.08f,white);
+        String[] statNames={"CAIXA","MORADORES","DIA ATUAL","SALDO / DIA"};
+        String[] statValues={moneyShort(city.money()),""+city.residents(),
+            ""+city.day(),(eco.net>0?"+":"")+eco.net};
+        for(int i=0;i<4;i++) {
+            float x=margin+i*(statWidth+gap);
+            label(statNames[i],x+10*u,h-72*u,0.92f,muted,statWidth-18*u);
+            label(statValues[i],x+10*u,h-90*u,1.43f,
+                i==3&&eco.net<0?bad:white,statWidth-18*u);
+        }
+        for(int i=0;i<3;i++) {
+            float x=10*u+i*(demandWidth+gap);
+            label(demandLabel[i],x+9*u,h-127*u,1.04f,sector[i],
+                demandWidth-55*u);
+            label(""+demand[i],x+demandWidth-48*u,h-127*u,1.40f,white,40*u);
+            label(demand[i]>=60?"ALTA":demand[i]>=30?"MEDIA":"BAIXA",
+                x+10*u,h-146*u,0.86f,muted,demandWidth-20*u);
+        }
+        int missing=eco.unserved;
+        label(missing>0?"! "+missing+" ZONAS SEM RUA":"ACESSO VIARIO OK",
+            17*u,h-178*u,0.98f,missing>0?amber:good,(w-32*u)*0.48f);
+        String labor="DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
+        label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
+        for(int i=0;i<HudLayout.ACTIONS;i++) {
+            String text=(i==0&&simulationPaused)?"SEGUIR":i==1?simulationSpeed+"X":
                 i==2?(paintMode?"PINTAR":"MOVER"):ACTION_LABELS[i];
-            glyph.setText(font,text);
-            float bw=w/HudLayout.ACTIONS;
-            font.draw(batch,text,i*bw+(bw-glyph.width)/2f,
-                h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT*0.75f)*u);
+            centered(text,i*actionWidth,actionWidth,
+                h-(HudLayout.ACTION_TOP+HudLayout.ACTION_HEIGHT*0.62f)*u,
+                1.12f,white);
         }
-        font.getData().setScale(1.22f*u);
-        for (int i=0;i<HudLayout.TOOLS;i++) {
-            glyph.setText(font,toolNames[i]);
-            float bw=w/HudLayout.TOOLS;
-            font.draw(batch,toolNames[i],i*bw+(bw-glyph.width)*0.5f,39*u);
+        for(int i=0;i<HudLayout.TOOLS;i++) {
+            float x=i*tw;
+            centered(toolNames[i],x,tw,46*u,1.30f,white);
+            centered("R$ "+city.cost(tools[i]),x,tw,26*u,0.96f,muted);
         }
-        if (!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
-            City.BuildResult preview=city.preview(new ArrayList<>(brushCells),selected);
-            font.getData().setScale(1.05f*u);
-            font.setColor(preview.insufficientFunds?rgb(250,140,119):rgb(251,235,171));
-            font.draw(batch,"AREA "+preview.built+" | R$ "+preview.cost+
-                (preview.ignored>0?" | BLOQ "+preview.ignored:"") ,12*u,(HudLayout.BOTTOM_HEIGHT+20)*u);
-        } else if (toastClock>0 && !helpVisible) {
-            font.getData().setScale(1.00f*u);
-            font.setColor(rgb(252,244,191));
-            font.draw(batch,toast,12*u,(HudLayout.BOTTOM_HEIGHT+20)*u);
+        if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
+            !slotsVisible && !economyVisible)drawInspector(u,eco);
+        float toastY=(HudLayout.BOTTOM_HEIGHT+18)*u;
+        if(inspectorVisible && city.inBounds(hoverX,hoverY))
+            toastY+=(HudLayout.INSPECTOR_HEIGHT+8)*u;
+        if(!helpVisible && !slotsVisible && !economyVisible && toastClock>0) {
+            label(toast,13*u,toastY,1.12f,rgb(246,234,171),w-30*u);
         }
-        if (helpVisible) {
-            float x=29*u,y=h/2f+86*u;
-            font.setColor(rgb(248,241,214));
-            font.getData().setScale(1.02f*u);
-            font.draw(batch,"COMO JOGAR",x,y);
-            font.getData().setScale(0.93f*u);
-            font.draw(batch,"Toque: construir no terreno",x,y-38*u);
-            font.draw(batch,"MOVER: arraste a camera",x,y-67*u);
-            font.draw(batch,"PINTAR: arraste ruas e areas",x,y-96*u);
-            font.draw(batch,"Dois dedos: mover/zoom",x,y-125*u);
-            font.draw(batch,"DEMANDA R/C/I: barra mostra procura",x,y-153*u);
-            font.draw(batch,"Toque na tela para fechar",x,y-182*u);
+        if(!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
+            City.BuildResult p=city.preview(new ArrayList<>(brushCells),selected);
+            label("AREA "+p.built+"  CUSTO R$ "+p.cost+
+                (p.ignored>0?"  |  BLOQUEADAS "+p.ignored:""),13*u,toastY+18*u,
+                1.08f,p.insufficientFunds?bad:good,w-28*u);
         }
-        if (slotsVisible) drawSlotsText(u);
-        if (economyVisible) drawEconomyText(u,economy);
+        }
+        if(helpVisible)drawHelpText(u);
+        if(slotsVisible)drawSlotsText(u);
+        if(economyVisible)drawEconomyText(u,eco);
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private void drawInspector(float u,CityEconomy report) {
+        Tile t=city.tile(hoverX,hoverY);
+        float base=(HudLayout.BOTTOM_HEIGHT+6)*u;
+        String type=t.type==TileType.RESIDENTIAL?"RESIDENCIAL":
+            t.type==TileType.COMMERCIAL?"COMERCIAL":
+            t.type==TileType.INDUSTRIAL?"INDUSTRIAL":
+            t.type==TileType.ROAD?"ESTRADA":
+            t.type==TileType.WATER?"AGUA":
+            t.type==TileType.FOREST?"FLORESTA":"TERRENO LIVRE";
+        Color white=rgb(229,242,237),muted=rgb(170,195,197);
+        label(type+"  |  NIVEL "+t.level,21*u,base+70*u,1.22f,white,w-94*u);
+        if(t.type.isZone()) {
+            label("RUA: "+(city.hasRoad(hoverX,hoverY)?"SIM":"NAO")+
+                "  |  DEMANDA "+report.demand(t.type)+
+                "  |  IMPOSTO "+city.taxRate(t.type)+"%",21*u,
+                base+45*u,1.04f,muted,w-88*u);
+            String reason=report.mainConstraint(t.type,city.hasRoad(hoverX,hoverY));
+            int low=city.lowDemandDays(t.type);
+            if(low>0)reason+="  |  "+low+" DIAS FRACOS";
+            label(reason,21*u,base+19*u,0.96f,
+                !city.hasRoad(hoverX,hoverY)?rgb(243,178,108):white,w-48*u);
+        } else label("POSICAO "+hoverX+","+hoverY+"  |  TOQUE EM X PARA FECHAR",
+            21*u,base+30*u,1.06f,muted,w-90*u);
+        centered("X",w-59*u,44*u,base+54*u,1.25f,white);
+    }
+
+    private void drawHelpText(float u) {
+        float x=30*u,y=h*0.5f+112*u;
+        label("COMO JOGAR",x,y,1.56f,rgb(233,242,237),w-70*u);
+        String[] lines={"TOQUE: construir ou inspecionar lote",
+            "MOVER: arraste para navegar", "PINTAR: ruas e zonas por arrasto",
+            "DOIS DEDOS: aproximar ou afastar", "R/C/I: barras = demanda de construcoes",
+            "ECON: impostos, receitas e despesas", "TOQUE NA TELA PARA FECHAR"};
+        for(int i=0;i<lines.length;i++)
+            label(lines[i],x,y-(35+i*28)*u,1.00f,
+                i==lines.length-1?rgb(242,194,113):rgb(188,218,217),w-72*u);
     }
 
     private float econW(float u) {return Math.min(w-24*u,560*u);}
@@ -507,60 +609,58 @@ public final class CityGame extends ApplicationAdapter {
     };
     private static final String[] TAX_NAMES = {"RESIDENCIAL", "COMERCIAL", "INDUSTRIAL"};
 
-    private void drawEconomyOverlay(float u, CityEconomy report) {
+    private void drawEconomyOverlay(float u,CityEconomy report) {
         float x=econX(u),y=econY(u),ww=econW(u);
-        shapes.setColor(0.01f,0.03f,0.04f,0.89f);
+        shapes.setColor(0.015f,0.035f,0.045f,0.91f);
         shapes.rect(0,0,w,h);
-        shapes.setColor(rgb(26,46,53));
-        shapes.rect(x,y,ww,558*u);
-        shapes.setColor(rgb(112,173,134));
-        shapes.rect(x,y+554*u,ww,4*u);
+        shapes.setColor(rgb(29,51,63));shapes.rect(x,y,ww,558*u);
+        shapes.setColor(rgb(94,177,180));shapes.rect(x,y+553*u,ww,5*u);
+        // Tax cards keep touch coordinates unchanged from previous versions.
+        Color[] colors={rgb(117,218,147),rgb(115,191,232),rgb(240,184,104)};
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
-            shapes.setColor(rgb(43,64,67));
-            shapes.rect(x+14*u,cy,ww-28*u,73*u);
-            shapes.setColor(rgb(74,104,102));
-            shapes.rect(x+ww-139*u,cy+13*u,52*u,48*u);
-            shapes.rect(x+ww-73*u,cy+13*u,52*u,48*u);
+            card(x+14*u,cy,ww-28*u,73*u,colors[i],false);
+            card(x+ww-139*u,cy+13*u,52*u,48*u,rgb(148,178,187),false);
+            card(x+ww-73*u,cy+13*u,52*u,48*u,rgb(148,178,187),false);
         }
-        shapes.setColor(rgb(58,107,83));
-        shapes.rect(x+16*u,y+13*u,ww-32*u,47*u);
+        shapes.setColor(rgb(51,76,85));
+        shapes.rect(x+17*u,y+177*u,ww-34*u,2*u);
+        shapes.rect(x+17*u,y+83*u,ww-34*u,2*u);
+        card(x+16*u,y+13*u,ww-32*u,47*u,rgb(111,199,148),false);
     }
+
     private void drawEconomyText(float u,CityEconomy report) {
         float x=econX(u),y=econY(u),ww=econW(u);
-        font.setColor(rgb(234,242,215));
-        font.getData().setScale(1.22f*u);
-        font.draw(batch,"ECONOMIA E IMPOSTOS",x+21*u,y+518*u);
-        font.getData().setScale(0.90f*u);
-        font.draw(batch,"Impostos altos aumentam caixa, mas reduzem demanda.",x+21*u,y+484*u);
+        Color white=rgb(236,246,239),sub=rgb(168,198,205);
+        label("ECONOMIA",x+21*u,y+520*u,1.62f,white,ww-42*u);
+        label("Ajuste os impostos de cada setor: 5% a 20%",
+            x+21*u,y+487*u,1.04f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
-            TileType type=TAX_TYPES[i];
-            int demand=report.demand(type),rate=city.taxRate(type);
-            font.setColor(rgb(234,242,215));
-            font.getData().setScale(0.95f*u);
-            font.draw(batch,TAX_NAMES[i]+"  "+rate+"%",x+27*u,cy+51*u);
-            font.setColor(rgb(188,218,199));
-            font.getData().setScale(0.85f*u);
-            font.draw(batch,"Demanda: "+demand+"/100  |  "+city.lowDemandDays(type)+" dias fracos",x+27*u,cy+24*u);
-            font.setColor(rgb(244,238,196));
-            font.getData().setScale(1.45f*u);
-            font.draw(batch,"-",x+ww-117*u,cy+46*u);
-            font.draw(batch,"+",x+ww-54*u,cy+46*u);
+            int demand=report.demand(TAX_TYPES[i]);
+            int rate=city.taxRate(TAX_TYPES[i]);
+            Color sector=i==0?rgb(117,218,147):i==1?rgb(115,191,232):rgb(240,184,104);
+            label(TAX_NAMES[i],x+27*u,cy+55*u,1.16f,sector,ww-175*u);
+            label("IMPOSTO "+rate+"%",x+27*u,cy+34*u,1.06f,white,ww-175*u);
+            label("DEMANDA "+demand+"  |  "+city.lowDemandDays(TAX_TYPES[i])+" dias fracos",
+                x+27*u,cy+16*u,0.90f,sub,ww-175*u);
+            centered("-",x+ww-139*u,52*u,cy+46*u,1.66f,white);
+            centered("+",x+ww-73*u,52*u,cy+46*u,1.52f,white);
         }
-        font.setColor(rgb(240,239,216));
-        font.getData().setScale(0.92f*u);
-        font.draw(batch,"RECEITA  R$ "+report.grossRevenue+" / dia",x+22*u,y+161*u);
-        font.draw(batch,"Moradias "+report.taxResidential+"  Lojas "+report.taxCommercial+
-            "  Industrias "+report.taxIndustrial,x+22*u,y+139*u);
-        font.draw(batch,"DESPESAS  R$ "+report.expenses+" / dia",x+22*u,y+115*u);
-        font.draw(batch,"Ruas "+report.roadMaintenance+"  Terrenos "+report.zoneMaintenance,x+22*u,y+93*u);
-        font.setColor(report.net>=0?rgb(162,228,173):rgb(251,163,148));
-        font.getData().setScale(1.01f*u);
-        font.draw(batch,"SALDO  "+(report.net>=0?"+":"")+report.net+" / dia",x+22*u,y+73*u);
-        font.setColor(rgb(235,243,223));
-        font.getData().setScale(1.06f*u);
-        font.draw(batch,"FECHAR",x+ww*0.5f-34*u,y+43*u);
+        label("RECEITAS",x+22*u,y+163*u,1.12f,rgb(123,224,159),ww-44*u);
+        label("R$ "+report.grossRevenue+" / dia",x+ww*0.63f,y+163*u,
+            1.18f,white,ww*0.34f);
+        label("Casas "+report.taxResidential+" | Lojas "+report.taxCommercial+
+            " | Ind. "+report.taxIndustrial,x+22*u,y+142*u,0.94f,sub,ww-44*u);
+        label("DESPESAS",x+22*u,y+118*u,1.12f,rgb(244,183,113),ww-44*u);
+        label("R$ "+report.expenses+" / dia",x+ww*0.63f,y+118*u,
+            1.18f,white,ww*0.34f);
+        label("Ruas "+report.roadMaintenance+" | Terrenos "+report.zoneMaintenance,
+            x+22*u,y+97*u,0.94f,sub,ww-44*u);
+        label("SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
+        label((report.net>=0?"+":"")+"R$ "+report.net,x+ww*0.55f,y+70*u,1.22f,
+            report.net>=0?rgb(131,228,170):rgb(253,151,132),ww*0.41f);
+        centered("FECHAR",x+16*u,ww-32*u,y+43*u,1.18f,white);
     }
     private void economyTap(int sx,int sy) {
         float u=uiScale, x=econX(u),y=econY(u),ww=econW(u);
@@ -593,68 +693,63 @@ public final class CityGame extends ApplicationAdapter {
     }
     private void openSlots() {
         economyVisible=false;
+        inspectorVisible=false;
         if (!savesReady) simulationPaused=true;
         selectedSlot=saves.active();
         refreshSlotInfo();
         slotsVisible=true;
     }
     private void drawSlotsOverlay(float u) {
-        shapes.setColor(0.02f,0.04f,0.04f,0.90f);
+        shapes.setColor(0.01f,0.03f,0.04f,0.91f);
         shapes.rect(0,0,w,h);
-        float xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
-        shapes.setColor(rgb(28,48,53));
-        shapes.rect(xx,yy,ww,452*u);
-        shapes.setColor(rgb(123,173,145));
-        shapes.rect(xx,yy+448*u,ww,4*u);
+        float x=slotsX(u),y=slotsY(u),ww=slotsW(u);
+        shapes.setColor(rgb(28,50,60));
+        shapes.rect(x,y,ww,452*u);
+        shapes.setColor(rgb(116,194,187));
+        shapes.rect(x,y+448*u,ww,4*u);
         for(int i=0;i<CitySlots.COUNT;i++) {
             float sy=slotRowY(i,u);
-            boolean sel=selectedSlot==i+1;
-            shapes.setColor(sel?rgb(208,191,124):rgb(62,88,92));
-            shapes.rect(xx+12*u,sy,ww-24*u,72*u);
-            shapes.setColor(sel?rgb(64,72,67):rgb(35,56,64));
-            shapes.rect(xx+15*u,sy+3*u,ww-30*u,66*u);
+            boolean active=selectedSlot==i+1;
+            card(x+12*u,sy,ww-24*u,72*u,
+                active?rgb(240,202,112):rgb(91,143,158),active);
         }
-        shapes.setColor(rgb(47,108,80));
-        shapes.rect(xx+12*u,yy+15*u,(ww-33*u)*0.62f,47*u);
-        shapes.setColor(rgb(91,64,69));
-        shapes.rect(xx+21*u+(ww-33*u)*0.62f,yy+15*u,(ww-33*u)*0.38f,47*u);
+        card(x+12*u,y+15*u,(ww-33*u)*0.62f,47*u,rgb(111,205,157),false);
+        card(x+21*u+(ww-33*u)*0.62f,y+15*u,
+            (ww-33*u)*0.38f,47*u,rgb(214,132,124),false);
     }
+
     private void drawSlotsText(float u) {
-        float xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
-        font.setColor(rgb(239,244,216));
-        font.getData().setScale(1.32f*u);
-        font.draw(batch,"MINHAS CIDADES",xx+24*u,yy+414*u);
-        font.getData().setScale(0.92f*u);
-        font.draw(batch,"3 espacos independentes. Nenhum e apagado ao trocar.",xx+24*u,yy+380*u);
+        float x=slotsX(u),y=slotsY(u),ww=slotsW(u);
+        Color white=rgb(231,245,241),muted=rgb(167,194,201);
+        label("MINHAS CIDADES",x+23*u,y+414*u,1.56f,white,ww-47*u);
+        label("Tres espacos independentes. Seus dados ficam salvos.",
+            x+23*u,y+381*u,0.98f,muted,ww-45*u);
         for(int i=0;i<CitySlots.COUNT;i++) {
             CitySlots.SlotInfo info=slotInfo[i];
             if(info==null)continue;
             float sy=slotRowY(i,u);
-            font.setColor(rgb(245,242,212));
-            font.getData().setScale(1.16f*u);
-            font.draw(batch,"CIDADE "+info.slot+(info.active?"  - EM USO":""),xx+27*u,sy+51*u);
-            font.getData().setScale(0.92f*u);
-            font.setColor(info.corrupt?rgb(245,135,121):rgb(207,224,205));
-            String description=info.corrupt?"ARQUIVO COM ERRO - NAO SERA APAGADO":
-                info.empty?"VAZIA - TOQUE PARA CRIAR":"DIA "+info.day+" | POP "+info.population+" | R$ "+info.money+
-                (info.backupUsed?" | BACKUP":"");
-            font.draw(batch,description,xx+27*u,sy+22*u);
+            label("CIDADE "+info.slot,x+28*u,sy+53*u,1.30f,white,ww-157*u);
+            label(info.active?"EM USO":info.corrupt?"PROTEGIDA":
+                info.empty?"NOVA":"SALVA",x+ww-120*u,sy+53*u,1.03f,
+                info.corrupt?rgb(246,140,124):info.active?rgb(247,208,115):rgb(137,214,193),105*u);
+            String description=info.corrupt?"Arquivo com erro. Nenhum dado sera apagado.":
+                info.empty?"Espaco vazio - pronto para criar":
+                "DIA "+info.day+"  |  POP "+info.population+
+                "  |  R$ "+info.money+(info.backupUsed?"  (BACKUP)":"");
+            label(description,x+28*u,sy+24*u,1.00f,
+                info.corrupt?rgb(247,143,127):muted,ww-55*u);
         }
-        font.setColor(rgb(245,244,217));
-        font.getData().setScale(1.08f*u);
         String action="ABRIR / CRIAR";
         if(selectedSlot>=1 && selectedSlot<=CitySlots.COUNT && slotInfo[selectedSlot-1]!=null) {
             CitySlots.SlotInfo chosen=slotInfo[selectedSlot-1];
-            if(chosen.active)action="CONTINUAR";
-            else if(chosen.corrupt)action="PROTEGIDA";
-            else if(chosen.empty)action="CRIAR NOVA";
-            else action="ABRIR CIDADE";
+            action=chosen.active?"CONTINUAR":chosen.corrupt?"PROTEGIDA":
+                chosen.empty?"CRIAR NOVA":"ABRIR CIDADE";
         }
-        font.draw(batch,action,xx+30*u,yy+44*u);
-        font.draw(batch,"VOLTAR",xx+ww-125*u,yy+44*u);
-        font.getData().setScale(0.88f*u);
-        font.setColor(rgb(190,217,184));
-        font.draw(batch,"O espaco 1 preserva o salvamento original.",xx+22*u,yy+77*u);
+        centered(action,x+12*u,(ww-33*u)*0.62f,y+43*u,1.12f,white);
+        centered("VOLTAR",x+21*u+(ww-33*u)*0.62f,
+            (ww-33*u)*0.38f,y+43*u,1.10f,white);
+        label("Cidade 1 preserva seu save original.",x+23*u,y+83*u,
+            0.96f,rgb(179,213,190),ww-46*u);
     }
     private void slotsTap(int screenX,int screenY) {
         float u=uiScale,xx=slotsX(u),yy=slotsY(u),ww=slotsW(u);
@@ -787,6 +882,7 @@ public final class CityGame extends ApplicationAdapter {
             message(result);
         }
         hoverX=x;hoverY=y;
+        inspectorVisible=true;
     }
 
     /** The touch and drag selection share the same screen-to-isometric-grid mapping. */
@@ -828,6 +924,7 @@ public final class CityGame extends ApplicationAdapter {
         brushCells.clear();
         brushGesture=false;
         hoverX=-1;hoverY=-1;
+        inspectorVisible=false;
     }
 
     private void activateAction(int index) {
@@ -872,7 +969,8 @@ public final class CityGame extends ApplicationAdapter {
                 pinchActive=false;
                 pendingAction=-1;
                 pendingTool=-1;
-                startedOnUi=helpVisible || HudLayout.isHud(screenX,screenY,w,h,uiScale);
+                pendingInspector=inspectorVisible && HudLayout.inspectorAt(screenX,screenY,w,h,uiScale);
+                startedOnUi=helpVisible || pendingInspector || HudLayout.isHud(screenX,screenY,w,h,uiScale);
                 pendingQuickAction=!helpVisible && screenY<=55*uiScale
                     ? HudLayout.quickActionAt(screenX,screenY,w,uiScale) : -1;
                 brushCells.clear();
@@ -947,6 +1045,9 @@ public final class CityGame extends ApplicationAdapter {
             if(pointer==0) {
                 if(helpVisible && startedOnUi) {
                     helpVisible=false;
+                } else if (pendingInspector && !suppressTap && !moving) {
+                    inspectorVisible=false;
+                    hoverX=-1;hoverY=-1;
                 } else if (startedOnUi && !suppressTap && !moving) {
                     int action=HudLayout.actionAt(screenX,screenY,w,uiScale);
                     int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
@@ -959,6 +1060,7 @@ public final class CityGame extends ApplicationAdapter {
                     else if (tool>=0 && tool==pendingTool) {
                         selected=tools[tool];
                         hoverX=-1;hoverY=-1;
+                        inspectorVisible=false;
                         message("Ferramenta: "+toolNames[tool]+" (R$ "+city.cost(selected)+")");
                     }
                 } else if (brushGesture && paintMode && !startedOnUi && !suppressTap) {
@@ -968,6 +1070,7 @@ public final class CityGame extends ApplicationAdapter {
                     buildAt(screenX,screenY);
                 }
                 pendingAction=-1;pendingTool=-1;
+                pendingInspector=false;
                 pendingRecenter=false;
                 pendingQuickAction=-1;
                 startedOnUi=false;
