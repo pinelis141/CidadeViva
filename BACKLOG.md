@@ -5,6 +5,22 @@
 **Stack:** Java 17, libGDX, Gradle, Android (prioritário), desktop (secundário).  
 **Produto:** city builder isométrico original, single-player e offline, com progressão econômica, infraestrutura, serviços e evolução visual em pixel art. Sem reutilizar código, marca ou assets de TheoTown.
 
+## Atualização — 0.4.0-alpha1 (vida urbana)
+
+**Motivação:** após testes em celular, o principal obstáculo de experiência relatado foi a falta de vida e evolução visível da cidade.
+
+- [x] Reequilibrar cidade **nova** (casas, comércio e indústria iniciais); cidades antigas não são regeneradas.
+- [x] Suavizar penalidade por terrenos vazios na demanda e tornar a ocupação de lotes com rua e demanda alta mais visível.
+- [x] Limitar a 1–6 novos edifícios por dia, com evolução vertical mais lenta e lógica determinística.
+- [x] Ritmo diário de 4 s → 2,55 s em 1×; 2×/4× preservados.
+- [x] Primeiros carros visuais que seguem ruas reais e pedestres animados perto de prédios, com orçamento fixo de desenho.
+- [x] Feedback visual para crescimento/abandono de edifícios; eventos efêmeros não alteram saves CVT3.
+- [x] Nova bateria **CityLifeTest** (4.104 verificações), regressões anteriores e APK Android CI aprovados.
+- [x] Código mesclado na main via [PR #28](https://github.com/pinelis141/CidadeViva/pull/28).
+- [ ] **Aceite em aparelho Android**: [QA #29](https://github.com/pinelis141/CidadeViva/issues/29), observar cinco minutos de bairro e verificar se as animações são visíveis e fluidas.
+- [ ] Próxima iteração: variedade de veículos/personagens em sprite art, efeitos sonoros discretos, objetivos/marcos de desenvolvimento e revisão de legibilidade HUD no aparelho.
+
+Ver [DESIGN-CIDADE-VIVA-0.4.md](DESIGN-CIDADE-VIVA-0.4.md) e [QA-ANDROID-0.4.0-alpha1-life.md](QA-ANDROID-0.4.0-alpha1-life.md). O tráfego **ainda é apenas visual** e não simula transportes ou engarrafamentos; CVT3, backup, impostos e três cidades continuam intactos.
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
