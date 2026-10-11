@@ -7,11 +7,11 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-/** Original, reproducible 80-sprite atlas; visual indices never enter saves. */
+/** Production atlas; 116 previous indices stable, 9 new building variants. */
 public final class PixelArtAtlas {
     private static final int CELL_W=72, CELL_H=128, COLS=8;
     private final Texture texture;
-    private final TextureRegion[] regions=new TextureRegion[116];
+    private final TextureRegion[] regions=new TextureRegion[125];
 
     public PixelArtAtlas() {
         texture=new Texture(Gdx.files.internal("city/atlas.png"));

@@ -1,3 +1,9 @@
+## 0.4.0 Alpha 3 — edifícios 1x1 distintos (11/10/2026)
+
+Novos sprites de casas, comércio e indústria com três níveis **visivelmente diferentes** por categoria, importados da arte aprovada e integrados ao atlas jogável. São nove sprites novos (IDs 116–124), elevando o atlas para **125**; 86% das posições urbanas usam essas novas fachadas e 14% retêm variantes legadas para diversidade. O nível dos prédios muda automaticamente conforme a simulação atual, sem alterar a economia, CVT3 ou os três espaços de salvamento.
+
+Os sprites são armazenados individualmente em `art/game/buildings_v3/` (PNG RGBA 72×128); `tools/generate_pixel_atlas.py` integra-os ao atlas de forma reproduzível e `tools/verify_atlas.py` valida dimensões. Prédios 2x2 continuam em **planejamento**; não estão habilitados nesta versão. Veja `BUILDINGS-V3-INTEGRACAO.md`.
+
 # Cidade Viva 0.4 Alpha 2 — bairros com identidade e metas urbanas
 
 **Versão Android DEV: `0.4.0-alpha2-evolution` (versionCode 11).**

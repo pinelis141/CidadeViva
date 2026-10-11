@@ -6,8 +6,8 @@ android {
         applicationId 'br.com.cidadeviva.game'
         minSdk 23
         targetSdk 35
-        versionCode 11
-        versionName '0.4.0-alpha2-evolution'
+        versionCode 12
+        versionName '0.4.0-alpha3-buildings'
     }
     sourceSets { main { jniLibs.srcDirs = ['libs']; assets.srcDirs = ['assets'] } }
     signingConfigs {

@@ -1,3 +1,11 @@
+## 0.4.0-alpha3-buildings — 11/10/2026
+
+- [ADICIONADO] 9 sprites importados de produção para três tipos e três níveis, com silhuetas e fachadas distintas.
+- [ALTERADO] Edifícios existentes passam a usar predominantemente a nova arte; parte das variantes antigas permanece para diversidade urbana.
+- [ADICIONADO] 125 sprites no atlas transparente 576×2048, preservando IDs 0–115.
+- [SEGURANÇA] Formato CVT3, três cidades, economia, crescimento, câmera e conquistas sem modificações.
+- [PLANEJADO] Prédios 2x2: requerem footprint, desenho em profundidade e testes de saves; ainda não implementados.
+
 ## 0.4.0-alpha2-evolution — 10/10/2026
 
 - Atlas ampliado de 80 para **116 sprites originais**; quatro arquiteturas adicionais por categoria e nível (36 novos prédios), preservando todos os índices anteriores.

@@ -20,9 +20,11 @@ public final class CityProgressTest {
                 int first=BuildingAppearance.sprite(type,1,x,y);
                 for(int lv=1;lv<=3;lv++) {
                     int id=BuildingAppearance.sprite(type,lv,x,y);
-                    ok(id>=27 && id<116,"sprite in 116 item atlas");
+                    ok(id>=27 && id<125,"sprite in 125 item atlas");
                     ok(BuildingAppearance.sprite(type,lv,x,y)==id,"deterministic sprite");
-                    if(family>=3)ok((id-80)%4==family-3,"new family stable at each level");
+                    if(family<6)ok(id==116+(type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?3:6)+lv-1,
+                        "approved V3 sprite matches the sector and visible progression tier");
+                    else ok(id>=80 && id<116,"secondary architecture uses preserved legacy atlas");
                 }
                 ok(first!=BuildingAppearance.sprite(type,2,x,y),"different tier has a distinct silhouette");
             }

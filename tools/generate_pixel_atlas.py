@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible ORIGINAL game-ready transparent pixel-art sprites.
+"""Reproducible original + imported, alpha-transparent pixel-art sprites.
 Uses Pillow only when generating assets; no runtime Python dependency.
 Each sprite uses a fixed 72x128 cell with a bottom-centered isometric footprint.
 """
@@ -320,6 +320,17 @@ for style in range(3):
         for variation in range(4):add(neighborhood_variant(style,level,variation)) # 80-115
 assert len(sprites)==116,len(sprites)
 
+# Alpha 3 — 9 production-adapted building sprites from the approved original
+# Buildings V3 concepts (R/C/I × tiers 1/2/3). The first 116 sprite indices stay
+# strictly stable to avoid visual regressions in previous city saves.
+ART=Path(__file__).resolve().parents[1]/'art/game/buildings_v3'
+for sector in ('res','com','ind'):
+    for level in range(1,4):
+        path=ART/f'{sector}_1x1_lvl{level}.png'
+        with Image.open(path) as source:
+            assert source.mode=='RGBA' and source.size==(CW,CH),path
+            add(source.copy())
+assert len(sprites)==125,len(sprites)
 
 rows=(len(sprites)+COLS-1)//COLS
 atlas=Image.new('RGBA',(CW*COLS,CH*rows),(0,0,0,0))
@@ -327,4 +338,4 @@ for i,im in enumerate(sprites):atlas.paste(im,((i%COLS)*CW,(i//COLS)*CH))
 output=Path(__file__).resolve().parents[1]/'android/assets/city/atlas.png'
 output.parent.mkdir(parents=True, exist_ok=True)
 atlas.save(output,optimize=True)
-print(f'{len(sprites)} original isometric sprites => {atlas.size}, {output.stat().st_size} bytes: {output}')
+print(f'{len(sprites)} isometric sprites => {atlas.size}, {output.stat().st_size} bytes: {output}')
