@@ -15,12 +15,10 @@ public final class BuildingAppearance {
         if(!type.isZone() || level<1) throw new IllegalArgumentException("Occupied R/C/I only");
         int kind=type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?1:2;
         int tier=Math.min(level,3)-1;
-        int v=variant(x,y);
-        // The approved Buildings V3 designs have unmistakable progression:
-        // small house/kiosk/shed -> townhome/cafe/warehouse -> apartment/
-        // commercial tower/factory. They appear in six of seven locations;
-        // one coordinate family retains architectural variety from Alpha 2.
-        if(v<6)return 116+kind*3+tier; // new, clearly different silhouette per tier
-        return 80+kind*12+tier*4+2; // legacy neighborhood alternate
+        // All inhabited tiles use one coherent art family. The old pixelated
+        // purple buildings are deliberately retired from rendering; their
+        // atlas indices remain untouched to avoid invalidating other assets.
+        // Every tier has its own visibly different approved 1x1 silhouette.
+        return 116+kind*3+tier;
     }
 }

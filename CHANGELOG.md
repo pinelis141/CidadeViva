@@ -1,3 +1,12 @@
+## 0.4.0-alpha4-visual — 11/10/2026
+
+- [CORRIGIDO] Toda construção habitada usa agora a **mesma família de nove sprites V3**, com três estilos de progressão por setor. As fachadas antigas roxas deixam de aparecer; os sprites legados permanecem no atlas, sem apagar dados.
+- [CORRIGIDO] O botão CENTRAR e a abertura/troca de cidade identificam o **núcleo urbano mais denso** em uma janela 15×15 em vez de incluir todos os ramais vazios de rua no enquadramento.
+- [MELHORADO] Zoom inicial mais próximo (mínimo sugerido 0,42), preservando a pinça de zoom e movimento manual para ver o restante do mapa.
+- [TESTADO] Regressões adicionais de consistência visual, câmera em retrato, ramais desconectados e continuidade dos saves CVT3. Atlas de 125 sprites inalterado.
+- [COMPATIBILIDADE] versionCode 13 e ID de testes `.dev`/assinatura estável; nenhuma mudança em CVT3, três cidades, impostos ou economia.
+- [PENDENTE] QA visual Android, especialmente enquadramento na tela de 1080×2316 e legibilidade dos sprites. 2x2 permanece planejado.
+
 ## 0.4.0-alpha3-buildings — 11/10/2026
 
 - [ADICIONADO] 9 sprites importados de produção para três tipos e três níveis, com silhuetas e fachadas distintas.
