@@ -1,3 +1,11 @@
+## 0.4.0 Alpha 4 — correção de legibilidade dos bairros
+
+- **Sem fachadas roxas antigas:** todos os prédios habitados utilizam os nove sprites novos de casa/sobrado/apartamento, quiosque/café/prédio comercial e depósito/galpão/fábrica, conforme seu nível.
+- **Bairro em destaque:** CENTRAR, abrir e trocar cidade procuram a região urbanizada mais densa e aproximam o zoom para valorizar as construções; estradas isoladas não obrigam a câmera a se afastar.
+- Continua possível explorar o mapa completo pelo arrasto e pela pinça. Nenhuma construção ou dado de CVT3 é substituído.
+- O atlas original de 125 imagens permanece intacto. Prédios 2×2 ainda não estão disponíveis.
+- Instale por cima do **Cidade Viva Teste** sem desinstalar. Confira [QA Android](QA-ANDROID-0.4.0-alpha4-visual.md).
+
 ## 0.4.0 Alpha 3 — edifícios 1x1 distintos (11/10/2026)
 
 Novos sprites de casas, comércio e indústria com três níveis **visivelmente diferentes** por categoria, importados da arte aprovada e integrados ao atlas jogável. São nove sprites novos (IDs 116–124), elevando o atlas para **125**; 86% das posições urbanas usam essas novas fachadas e 14% retêm variantes legadas para diversidade. O nível dos prédios muda automaticamente conforme a simulação atual, sem alterar a economia, CVT3 ou os três espaços de salvamento.

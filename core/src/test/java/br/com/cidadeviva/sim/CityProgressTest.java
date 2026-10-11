@@ -20,11 +20,10 @@ public final class CityProgressTest {
                 int first=BuildingAppearance.sprite(type,1,x,y);
                 for(int lv=1;lv<=3;lv++) {
                     int id=BuildingAppearance.sprite(type,lv,x,y);
-                    ok(id>=27 && id<125,"sprite in 125 item atlas");
+                    ok(id>=116 && id<125,"all building sprites belong to one coherent modern visual family");
                     ok(BuildingAppearance.sprite(type,lv,x,y)==id,"deterministic sprite");
-                    if(family<6)ok(id==116+(type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?3:6)+lv-1,
-                        "approved V3 sprite matches the sector and visible progression tier");
-                    else ok(id>=80 && id<116,"secondary architecture uses preserved legacy atlas");
+                    ok(id==116+(type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?3:6)+lv-1,
+                        "all seven coordinate variants use the approved V3 buildings");
                 }
                 ok(first!=BuildingAppearance.sprite(type,2,x,y),"different tier has a distinct silhouette");
             }
@@ -37,9 +36,26 @@ public final class CityProgressTest {
         ok(Math.abs(focus.x)<40,"new city focus X near neighborhood");
         ok(Math.abs(focus.y+768)<40,"new city focus Y near starting neighborhood");
         float zoom=focus.suggestedZoom(1080,2400,370,200);
-        ok(zoom>=0.64f && zoom<=1.4f,"camera zoom bounded");
+        ok(zoom>=0.42f && zoom<=1.10f,"camera zoom bounded and legible on phone");
         ok(Float.isFinite(zoom),"camera zoom finite");
-        ok(focus.minX<focus.maxX && focus.minY<focus.maxY,"target contains occupied streets");
+        ok(focus.minX<focus.maxX && focus.minY<focus.maxY,"target contains a developed neighborhood");
+        ok(zoom<0.64f,"portrait camera starts closer to the buildings than Alpha 3");
+        float oldX=focus.x,oldY=focus.y,oldZoom=zoom;
+        // A distant road spur cannot force the inhabited area to shrink or drift.
+        ok("Construído".equals(city.build(1,1,TileType.ROAD)),"isolated distant road created");
+        CityFocus.Target still=CityFocus.forCity(city);
+        ok(Math.abs(still.x-oldX)<0.01f && Math.abs(still.y-oldY)<0.01f,
+            "distant unused roads do not move the camera away from occupied buildings");
+        ok(Math.abs(still.suggestedZoom(1080,2400,370,200)-oldZoom)<0.001f,
+            "distant road cannot zoom out and make the neighborhood tiny");
+        City empty=new City();
+        for(int xx=0;xx<City.WIDTH;xx++)for(int yy=0;yy<City.HEIGHT;yy++) {
+            Tile t=empty.tile(xx,yy);
+            if(t.type.isZone())t.level=0;
+        }
+        CityFocus.Target emptyFocus=CityFocus.forCity(empty);
+        ok(Float.isFinite(emptyFocus.x) && Float.isFinite(emptyFocus.y),
+            "camera remains valid when no building is occupied");
         int goal=CityMilestones.nextGoal(city.residents());
         ok(goal==100,"initial city begins with 100 person target");
         List<CityMilestones.Milestone> unlocked=CityMilestones.crossed(90,510);

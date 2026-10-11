@@ -1014,7 +1014,7 @@ public final class CityGame extends ApplicationAdapter {
         float verticalOffset=(HudLayout.TOP_HEIGHT-HudLayout.BOTTOM_HEIGHT)*u*0.5f*camera.zoom;
         camera.position.set(focus.x,focus.y+verticalOffset,0);
         clampCamera();
-        if(feedback)message("Bairro reenquadrado");
+        if(feedback)message("Bairro em destaque! Pince para ampliar ou afastar.");
     }
 
     private void recenter() {focusOnCity(true);}
@@ -1027,7 +1027,7 @@ public final class CityGame extends ApplicationAdapter {
     /** Anchor the previously touched world point under the new finger midpoint. */
     private void zoomAround(float factor, float oldX,float oldY,float newX,float newY) {
         float oldZoom=camera.zoom;
-        float newZoom=MathUtils.clamp(oldZoom*factor,0.48f,2.1f);
+        float newZoom=MathUtils.clamp(oldZoom*factor,0.40f,2.1f);
         float[] center=IsoGrid.anchoredCamera(camera.position.x,camera.position.y,
             oldZoom,newZoom,oldX,oldY,newX,newY,w,h);
         camera.zoom=newZoom;
