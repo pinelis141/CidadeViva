@@ -35,6 +35,19 @@ Ver [DESIGN-CIDADE-VIVA-0.4.md](DESIGN-CIDADE-VIVA-0.4.md) e [QA-ANDROID-0.4.0-a
 - [ ] Iterar economia, objetivos mais profundos e renderização de personagens conforme vídeo de QA.
 
 CVT3, 3 slots, impostos, animações de Alpha 1 e assinatura Android DEV preservados. **Não desinstalar o aplicativo de testes.**
+## Atualização — 0.4.0-alpha3 (edifícios 1x1 integrados)
+
+**Entrega integrada:** [PR #32](https://github.com/pinelis141/CidadeViva/pull/32) — nove sprites 1x1 renderizados no jogo, não apenas conceitos.
+
+- [x] Nove sprites visualmente distintos: três níveis por setor R/C/I, índices 116–124.
+- [x] Atlas **125 sprites, 576×2048, RGBA transparente**; IDs 0–115 preservados pixel a pixel.
+- [x] Atualizado `BuildingAppearance` para escolher o novo sprite em 6 de 7 famílias determinísticas, preservando uma variante antiga para diversidade.
+- [x] Assets fonte 72×128 armazenados em `art/game/buildings_v3/` e incorporados ao gerador reprodutível do atlas.
+- [x] Testes Java e CI Android debug aprovados; versão 0.4.0-alpha3-buildings, versionCode 12.
+- [ ] [QA de campo #33](https://github.com/pinelis141/CidadeViva/issues/33): legibilidade, recortes, sobreposição, evolução e save no aparelho.
+- [ ] Edifícios **2x2**: ainda pendentes. Implementar detecção de bloco e regras de ocupação, renderização e salvamento separado.
+
+CVT3, impostos, três slots e assinatura DEV preservados; não desinstalar o aplicativo de testes.
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
