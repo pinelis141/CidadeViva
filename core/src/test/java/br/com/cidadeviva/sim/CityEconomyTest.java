@@ -35,8 +35,8 @@ public final class CityEconomyTest {
         check(first.net==first.grossRevenue-first.expenses,"budget balanced");
         check(first.grossRevenue==first.taxResidential+first.taxCommercial+first.taxIndustrial,"tax breakdown");
         check(first.expenses==first.roadMaintenance+first.zoneMaintenance,"cost breakdown");
-        check(first.roadMaintenance==city.roads()*2,"road cost per tile");
-        check(first.zoneMaintenance==city.zones(),"zone cost per tile");
+        check(first.roadMaintenance==city.roads()*3,"road maintenance per tile");
+        check(first.zoneMaintenance>city.zones()*2,"upgraded occupied buildings increase maintenance");
         for(int n:new int[]{first.residentialDemand,first.commercialDemand,first.industrialDemand})
             check(n>=5 && n<=95,"demands bounded");
         check(first.unserved==city.unservedZones(),"road count agrees");
@@ -75,7 +75,7 @@ public final class CityEconomyTest {
         for(int x=0;x<City.WIDTH && empty==null;x++)for(int y=0;y<City.HEIGHT;y++)
             if(roads.canBuild(x,y,TileType.ROAD)){empty=new int[]{x,y};break;}
         roads.build(empty[0],empty[1],TileType.ROAD);
-        check(roads.economy().expenses==oldExpenses+2,"new road has maintenance");
+        check(roads.economy().expenses==oldExpenses+3,"new road has maintenance");
         System.out.println("OK: "+assertions+" verificacoes da economia, demanda, crescimento e saves.");
     }
 }

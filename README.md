@@ -1,3 +1,5 @@
+> **Atualização Alpha 5 — economia:** a arrecadação passou a depender de empregos ocupados e ruas acessíveis; manutenção cresce por nível, os impostos têm retorno decrescente e o novo índice QUALIDADE aparece na interface. Demolição agora é gratuita para permitir recuperação de cidades em crise. Veja [DESIGN-BALANCEAMENTO-0.4-ALPHA5.md](DESIGN-BALANCEAMENTO-0.4-ALPHA5.md) e [QA-ANDROID-0.4.0-alpha5-balance.md](QA-ANDROID-0.4.0-alpha5-balance.md). Salvamentos CVT3 continuam compatíveis.
+
 ## 0.4.0 Alpha 4 — correção de legibilidade dos bairros
 
 - **Sem fachadas roxas antigas:** todos os prédios habitados utilizam os nove sprites novos de casa/sobrado/apartamento, quiosque/café/prédio comercial e depósito/galpão/fábrica, conforme seu nível.
