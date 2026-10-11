@@ -23,3 +23,4 @@ java -cp "$DIR" br.com.cidadeviva.storage.CitySlotsTest
 
 java -cp "$DIR" br.com.cidadeviva.sim.CityEconomyTest
 java -cp "$DIR" br.com.cidadeviva.sim.CityTaxPolicyTest
+java -cp "$DIR" br.com.cidadeviva.sim.CityLifeTest

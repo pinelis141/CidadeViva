@@ -3,6 +3,7 @@ package br.com.cidadeviva.app;
 import br.com.cidadeviva.sim.City;
 import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.CityEconomy;
+import br.com.cidadeviva.sim.CityActivity;
 import br.com.cidadeviva.sim.Tile;
 import br.com.cidadeviva.sim.TileType;
 import br.com.cidadeviva.input.HudLayout;
@@ -65,7 +66,25 @@ public final class CityGame extends ApplicationAdapter {
     private CitySlots.SlotInfo[] slotInfo = new CitySlots.SlotInfo[CitySlots.COUNT];
     private TileType selected = TileType.ROAD;
     private int hoverX = -1, hoverY = -1;
+    // Cosmetic animation state: no new save fields and no extra textures.
+    private static final float SECONDS_PER_DAY=2.55f;
+    private static final int MAX_GROWTH_PULSES=18;
+    private CityActivity activity;
+    private float activityClock=0f;
     private float simClock = 0;
+    private final float[] activityTile=new float[2];
+    private final ArrayList<GrowthPulse> growthPulses=new ArrayList<>();
+    private final Vector3 projectedGrowth=new Vector3();
+    private float growthNoticeCooldown=0f;
+
+    private static final class GrowthPulse {
+        final int x,y,level;
+        final TileType type;
+        float age;
+        GrowthPulse(City.GrowthEvent event) {
+            x=event.x;y=event.y;level=event.toLevel;type=event.type;
+        }
+    }
     private String toast = "MODO MOVER: arraste para navegar. Toque para construir.";
     private float toastClock = 5f;
     private float uiScale = 1f;
@@ -129,6 +148,7 @@ public final class CityGame extends ApplicationAdapter {
             message("Salvamento com erro. Escolha outro espaco sem apagar o atual.");
             Gdx.app.error("CidadeViva","Erro ao abrir cidade ativa",e);
         }
+        refreshActivity();
     }
 
     @Override public void resize(int width,int height) {
@@ -143,11 +163,30 @@ public final class CityGame extends ApplicationAdapter {
     @Override public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
         toastClock -= delta;
-        if (!simulationPaused && savesReady && !slotsVisible && !economyVisible) {
+        if (!simulationPaused && savesReady && !slotsVisible && !economyVisible && !helpVisible) {
+            activityClock += delta;
+            growthNoticeCooldown=Math.max(0f,growthNoticeCooldown-delta);
+            for(int i=growthPulses.size()-1;i>=0;i--) {
+                GrowthPulse pulse=growthPulses.get(i);
+                pulse.age+=delta;
+                if(pulse.age>=2.35f)growthPulses.remove(i);
+            }
             simClock += delta * simulationSpeed;
-            while (simClock >= 4f) {
-                simClock -= 4f;
+            while (simClock >= SECONDS_PER_DAY) {
+                simClock -= SECONDS_PER_DAY;
                 city.nextDay();
+                for(City.GrowthEvent event:city.recentEvents()) {
+                    if(growthPulses.size()>=MAX_GROWTH_PULSES)growthPulses.remove(0);
+                    growthPulses.add(new GrowthPulse(event));
+                    if(event.isGrowth() && growthNoticeCooldown<=0f) {
+                        String name=event.type==TileType.RESIDENTIAL?"Casas":
+                            event.type==TileType.COMMERCIAL?"Comercio":"Industria";
+                        message(name+" evoluindo no bairro!");
+                        growthNoticeCooldown=4.8f;
+                    }
+                }
+                // Purely visual traffic routes respond to new roads and buildings.
+                if(!city.recentEvents().isEmpty())refreshActivity();
                 if (city.day() % 15 == 0) save(false);
             }
         }
@@ -165,6 +204,8 @@ public final class CityGame extends ApplicationAdapter {
         batch.end();
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
+        drawCityActivity();
+        drawGrowthEffects();
         drawRoadAccessWarnings();
         drawBuildPreview();
         shapes.end();
@@ -191,6 +232,80 @@ public final class CityGame extends ApplicationAdapter {
             }
         }
     }
+
+    /** Cars use only valid connected roads; pedestrians move near occupied lots. */
+    private void drawCityActivity() {
+        if(activity==null)return;
+        Color[] carColors={rgb(242,181,94),rgb(110,197,222),rgb(235,123,117),
+            rgb(213,222,230),rgb(139,208,152)};
+        for(CityActivity.Car car:activity.cars()) {
+            car.sample(activityClock,activityTile);
+            float sx=(activityTile[0]-activityTile[1])*HALF_W;
+            float sy=-(activityTile[0]+activityTile[1])*HALF_H;
+            if(!visibleOnCamera(sx,sy))continue;
+            shapes.setColor(0.05f,0.08f,0.09f,0.65f);
+            shapes.rect(sx-5f,sy-3.5f,10f,5f);
+            shapes.setColor(carColors[car.colorVariant]);
+            shapes.rect(sx-4.5f,sy-1.5f,9f,4.5f);
+            shapes.setColor(rgb(190,235,234));
+            shapes.rect(sx-1.5f,sy+0.4f,3f,2.2f);
+        }
+        Color[] clothes={rgb(254,215,140),rgb(123,191,234),rgb(244,161,160),
+            rgb(183,228,152),rgb(224,197,236)};
+        for(CityActivity.Walker person:activity.walkers()) {
+            person.sample(activityClock,activityTile);
+            float sx=(activityTile[0]-activityTile[1])*HALF_W;
+            float sy=-(activityTile[0]+activityTile[1])*HALF_H-7f;
+            if(!visibleOnCamera(sx,sy))continue;
+            shapes.setColor(rgb(28,48,50));
+            shapes.rect(sx-1.2f,sy-2.2f,2.4f,3f);
+            shapes.setColor(clothes[person.colorVariant]);
+            shapes.rect(sx-1.6f,sy+0.8f,3.2f,4.2f);
+            shapes.setColor(rgb(239,196,159));
+            shapes.rect(sx-1.1f,sy+5f,2.2f,2.2f);
+        }
+    }
+
+    private boolean visibleOnCamera(float sx,float sy) {
+        return sx>camera.position.x-w*camera.zoom/2f-28 &&
+            sx<camera.position.x+w*camera.zoom/2f+28 &&
+            sy>camera.position.y-h*camera.zoom/2f-55 &&
+            sy<camera.position.y+h*camera.zoom/2f+55;
+    }
+
+    /** A short expanding diamond calls attention to buildings that grew/shrank. */
+    private void drawGrowthEffects() {
+        for(GrowthPulse pulse:growthPulses) {
+            float sx=(pulse.x-pulse.y)*HALF_W;
+            float sy=-(pulse.x+pulse.y)*HALF_H;
+            if(!visibleOnCamera(sx,sy))continue;
+            float progress=pulse.age/2.35f;
+            float radius=17+progress*21;
+            if(pulse.level>0)shapes.setColor(0.45f,1f,0.66f,(1f-progress)*0.62f);
+            else shapes.setColor(1f,0.49f,0.33f,(1f-progress)*0.58f);
+            thinDiamond(sx,sy,radius,radius*0.5f);
+            shapes.rect(sx-1.6f,sy+15f+progress*22f,3.2f,3.2f);
+        }
+    }
+
+    private void drawGrowthLabels(float u) {
+        for(GrowthPulse pulse:growthPulses) {
+            float sx=(pulse.x-pulse.y)*HALF_W;
+            float sy=-(pulse.x+pulse.y)*HALF_H+46f+pulse.age*16f;
+            projectedGrowth.set(sx,sy,0f);
+            camera.project(projectedGrowth);
+            if(projectedGrowth.x<20*u || projectedGrowth.x>w-70*u ||
+                projectedGrowth.y<HudLayout.BOTTOM_HEIGHT*u+16*u ||
+                projectedGrowth.y>h-HudLayout.TOP_HEIGHT*u-8*u)continue;
+            String value=pulse.level==0?"ABANDONO":
+                pulse.type==TileType.RESIDENTIAL?"+ CASAS":
+                pulse.type==TileType.COMMERCIAL?"+ LOJAS":"+ INDUSTRIA";
+            label(value,projectedGrowth.x,projectedGrowth.y,1.03f,
+                pulse.level==0?rgb(254,150,115):rgb(163,248,174),90*u);
+        }
+    }
+
+    private void refreshActivity() {activity=new CityActivity(city);}
 
     /** Amber markers identify zoned lots that cannot yet grow without an adjacent road. */
     private void drawRoadAccessWarnings() {
@@ -500,6 +615,7 @@ public final class CityGame extends ApplicationAdapter {
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
         if(!helpVisible && !slotsVisible && !economyVisible) {
+        drawGrowthLabels(u);
         label("CIDADE VIVA",13*u,h-20*u,1.42f,white,
             Math.max(45,w-372*u));
         label("GESTAO URBANA",14*u,h-38*u,0.82f,muted,
@@ -525,8 +641,9 @@ public final class CityGame extends ApplicationAdapter {
                 x+10*u,h-146*u,0.86f,muted,demandWidth-20*u);
         }
         int missing=eco.unserved;
-        label(missing>0?"! "+missing+" ZONAS SEM RUA":"ACESSO VIARIO OK",
-            17*u,h-178*u,0.98f,missing>0?amber:good,(w-32*u)*0.48f);
+        label(missing>0?"! "+missing+" ZONAS SEM RUA":
+            "BAIRROS EM EVOLUCAO",17*u,h-178*u,0.98f,
+            missing>0?amber:good,(w-32*u)*0.48f);
         String labor="DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
         for(int i=0;i<HudLayout.ACTIONS;i++) {
@@ -779,6 +896,8 @@ public final class CityGame extends ApplicationAdapter {
             try {
                 CitySlots.Opened opened=saves.switchTo(selectedSlot,city,savesReady);
                 city=opened.city;
+                refreshActivity();
+                growthPulses.clear();
                 savesReady=true;
                 slotsVisible=false;
                 economyVisible=false;
@@ -816,6 +935,8 @@ public final class CityGame extends ApplicationAdapter {
                 return;
             }
             city = result.city;
+            refreshActivity();
+            growthPulses.clear();
             savesReady=true;
             if (result.fromBackup) message("Backup recuperado! Salve novamente.");
             else if (feedback) message("Cidade carregada!");
@@ -881,6 +1002,7 @@ public final class CityGame extends ApplicationAdapter {
                 result="Zona criada. SEM RUA ADJACENTE!";
             message(result);
         }
+        refreshActivity();
         hoverX=x;hoverY=y;
         inspectorVisible=true;
     }
@@ -917,6 +1039,7 @@ public final class CityGame extends ApplicationAdapter {
     private void finishStroke(int screenX,int screenY) {
         strokeTo(screenX,screenY);
         City.BuildResult result=city.buildArea(new ArrayList<>(brushCells),selected);
+        if(result.built>0 && !result.insufficientFunds)refreshActivity();
         String response=result.feedback();
         if (selected.isZone() && !result.insufficientFunds && result.built>0 &&
             city.unservedZones()>0) response+=" | SEM RUA: "+city.unservedZones();

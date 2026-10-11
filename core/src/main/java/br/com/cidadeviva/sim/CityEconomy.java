@@ -108,9 +108,11 @@ public final class CityEconomy {
         int rateI=city.taxRate(TileType.INDUSTRIAL);
         // A 10% tax matches the prior version; each extra percentage point
         // reduces investment appetite by three demand points.
-        int residential = clamp(42 + (jobs - population) / 3 - unusedResidential * 8 - 3*(rateR-10), 5, 95);
-        int commercial = clamp(42 + (population - commerce * 2) / 5 - unusedCommercial * 9 - 3*(rateC-10), 5, 95);
-        int industrial = clamp(46 + (population - jobs) / 3 - unusedIndustrial * 10 - 3*(rateI-10), 5, 95);
+        // Do not crash demand when the player paints a modest block of empty lots.
+        // Undeveloped supply must dampen growth gradually, not stop it entirely.
+        int residential = clamp(42 + (jobs - population) / 3 - unusedResidential * 2 - 3*(rateR-10), 5, 95);
+        int commercial = clamp(42 + (population - commerce * 2) / 5 - unusedCommercial * 3 - 3*(rateC-10), 5, 95);
+        int industrial = clamp(46 + (population - jobs) / 3 - unusedIndustrial * 3 - 3*(rateI-10), 5, 95);
         int taxR = (int)((long)population * 3 * rateR / 50); // base 0.6 at 10%
         int taxC = (int)((long)commerce * rateC / 10); // base 1.0 at 10%
         int taxI = (int)((long)industry * 6 * rateI / 50); // base 1.2 at 10%
