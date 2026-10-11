@@ -16,8 +16,11 @@ public final class BuildingAppearance {
         int kind=type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?1:2;
         int tier=Math.min(level,3)-1;
         int v=variant(x,y);
-        if(v==2)return 71+kind*3+tier; // original Alpha 3 third style
-        if(v<2)return 27+kind*6+tier*2+v; // original two styles
-        return 80+kind*12+tier*4+(v-3); // 4 new styles per level
+        // The approved Buildings V3 designs have unmistakable progression:
+        // small house/kiosk/shed -> townhome/cafe/warehouse -> apartment/
+        // commercial tower/factory. They appear in six of seven locations;
+        // one coordinate family retains architectural variety from Alpha 2.
+        if(v<6)return 116+kind*3+tier; // new, clearly different silhouette per tier
+        return 80+kind*12+tier*4+2; // legacy neighborhood alternate
     }
 }
