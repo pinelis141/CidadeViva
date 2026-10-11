@@ -61,6 +61,22 @@ CVT3, impostos, três slots e assinatura DEV preservados; não desinstalar o apl
 - [ ] 2×2: footprint e economia ainda precisam ser implementados; não ativar neste marco.
 
 Não altera CVT3, impostos, posições e níveis das três cidades. Atualizar o app de teste sem desinstalar.
+## Atualização — 0.4.0-alpha5 (balanceamento econômico)
+
+**Auditoria e implementação detalhadas:** [PR #36](https://github.com/pinelis141/CidadeViva/pull/36), com compilação Android aprovada; [QA físico #37](https://github.com/pinelis141/CidadeViva/issues/37) pendente.
+
+- [x] Separar empregos oferecidos de empregados efetivos; cobrar impostos empresariais somente de trabalho realmente ocupado e acessível por rua.
+- [x] Manutenção progressiva: R$ 3 por rua, R$ 2 por zona e custo por nível ao quadrado (`4/6/9 × nível²` para R/C/I).
+- [x] Fiscalidade 5–20% com rendimento decrescente após 10%, eliminando cobrança máxima como estratégia dominante.
+- [x] Demandas baseadas em razões populacionais/empregos, com penalidade de oferta de terrenos proporcional à raiz quadrada da quantidade vaga.
+- [x] Indicador derivado QUALIDADE, impactos de caixa baixo e desemprego, expansão comercial/industrial limitada por vagas ociosas.
+- [x] Demolição gratuita em dificuldade financeira, sem permitir aterrar lagos gratuitamente.
+- [x] `CityBalanceTest`: 23.506 verificações e comparação determinística de cenários fiscais de 100 dias; demais regressões CVT3 aprovadas.
+- [x] Compilação Android DEV versão `0.4.0-alpha5-economia`, versionCode 14, atlas125 mantido.
+- [ ] Testes de game feel em aparelho Android: verificar caixa, demanda, qualidade, clareza dos indicadores e ausência de bloqueios.
+- [ ] Próxima etapa: prédios maiores 2×2, reforço de variantes e limites de câmera, **somente após validar o equilíbrio**.
+
+Referências: [DESIGN-BALANCEAMENTO-0.4-ALPHA5.md](DESIGN-BALANCEAMENTO-0.4-ALPHA5.md) e [QA-ANDROID-0.4.0-alpha5-balance.md](QA-ANDROID-0.4.0-alpha5-balance.md). **Formato CVT3 e três cidades preservados.**
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
