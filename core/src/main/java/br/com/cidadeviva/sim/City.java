@@ -23,6 +23,8 @@ public final class City {
      * Never serialized: saves remain CVT3 and can be loaded by Alpha 3. */
     private final ArrayList<GrowthEvent> recentEvents = new ArrayList<>();
     private final List<GrowthEvent> publicEvents = Collections.unmodifiableList(recentEvents);
+    private final ArrayList<CityMilestones.Milestone> recentMilestones = new ArrayList<>();
+    private final List<CityMilestones.Milestone> publicMilestones = Collections.unmodifiableList(recentMilestones);
 
     public static final class GrowthEvent {
         public final int x, y, fromLevel, toLevel;
@@ -34,6 +36,7 @@ public final class City {
         public boolean isGrowth() {return toLevel>fromLevel;}
     }
     public List<GrowthEvent> recentEvents() {return publicEvents;}
+    public List<CityMilestones.Milestone> recentMilestones() {return publicMilestones;}
 
 
     public City() { this(0); }
@@ -259,7 +262,9 @@ public final class City {
      */
     public void nextDay() {
         CityEconomy report = economy();
+        int populationBefore=residents();
         recentEvents.clear();
+        recentMilestones.clear();
         day++;
         final TileType[] categories={TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL};
         for(int i=0;i<categories.length;i++) {
@@ -306,6 +311,7 @@ public final class City {
                 recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
             }
         }
+        recentMilestones.addAll(CityMilestones.crossed(populationBefore,residents()));
     }
 
     /** Chamado apenas por CityPersistence depois de validar o arquivo inteiro. */
@@ -316,6 +322,7 @@ public final class City {
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];
         recentEvents.clear();
+        recentMilestones.clear();
         money = restoredMoney;
         day = restoredDay;
         lastIncome = restoredIncome;

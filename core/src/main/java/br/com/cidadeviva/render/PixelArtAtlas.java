@@ -1,6 +1,7 @@
 package br.com.cidadeviva.render;
 
 import br.com.cidadeviva.sim.TileType;
+import br.com.cidadeviva.sim.BuildingAppearance;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -10,7 +11,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 public final class PixelArtAtlas {
     private static final int CELL_W=72, CELL_H=128, COLS=8;
     private final Texture texture;
-    private final TextureRegion[] regions=new TextureRegion[80];
+    private final TextureRegion[] regions=new TextureRegion[116];
 
     public PixelArtAtlas() {
         texture=new Texture(Gdx.files.internal("city/atlas.png"));
@@ -45,10 +46,7 @@ public final class PixelArtAtlas {
         return variant<3?24+variant:61+(variant-3);
     }
     public static int buildingSprite(TileType type,int level,int x,int y) {
-        int kind=type==TileType.RESIDENTIAL?0:type==TileType.COMMERCIAL?1:2;
-        int capped=Math.max(1,Math.min(level,3));
-        int variant=Math.floorMod(x*7+y*11+(x*y),3);
-        return variant==2 ? 71+kind*3+(capped-1) : 27+kind*6+(capped-1)*2+variant;
+        return BuildingAppearance.sprite(type,level,x,y);
     }
     public void dispose() {texture.dispose();}
 }
