@@ -1,3 +1,18 @@
+# Cidade Viva 0.4 — cidade que evolui e se movimenta
+
+**Versão de desenvolvimento: `0.4.0-alpha1-life` (Android DEV).**
+
+- Novas cidades começam com casas, comércio **e indústria** junto a ruas, gerando vagas suficientes para estimular residências. Cidades já salvas não são recriadas.
+- Lotes vazios próximos de ruas ocupam-se mais rapidamente quando a demanda é favorável; a penalidade pela oferta de terrenos não paralisa bairros pequenos.
+- **Carros** percorrem ruas conectadas e **pedestres** caminham próximos a edificações existentes; são animações leves de ambientação, não trânsito simulado com IA.
+- Prédios que crescem/decrescem emitem efeito de desenvolvimento e aviso visual, sem alterar o formato de salvamento CVT3.
+- 1 dia dura **2,55 segundos em 1×**, com 2×/4× para avançar; PAUSA e os modais param a simulação.
+- [Detalhes do design](DESIGN-CIDADE-VIVA-0.4.md) · [QA Android](QA-ANDROID-0.4.0-alpha1-life.md).
+
+**Atualize por cima do Cidade Viva Teste, sem desinstalar.** Não volte a APKs antigos depois de salvar em CVT3, pois não lerão os arquivos mais recentes.
+
+---
+
 # Cidade Viva — Java/libGDX Android
 
 Versão em desenvolvimento: **0.3.0-alpha2**.

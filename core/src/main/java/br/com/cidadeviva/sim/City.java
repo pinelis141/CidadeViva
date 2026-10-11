@@ -1,6 +1,8 @@
 package br.com.cidadeviva.sim;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import br.com.cidadeviva.input.BuildStroke;
 
@@ -17,6 +19,22 @@ public final class City {
     private final int[] taxRates = {10, 10, 10};
     // Consecutive weak-demand days for each zone category; limits one-day collapses.
     private final int[] lowDemandDays = {0, 0, 0};
+    /** Presentation-only changes produced by the most recent simulated day.
+     * Never serialized: saves remain CVT3 and can be loaded by Alpha 3. */
+    private final ArrayList<GrowthEvent> recentEvents = new ArrayList<>();
+    private final List<GrowthEvent> publicEvents = Collections.unmodifiableList(recentEvents);
+
+    public static final class GrowthEvent {
+        public final int x, y, fromLevel, toLevel;
+        public final TileType type;
+        private GrowthEvent(int x,int y,TileType type,int fromLevel,int toLevel) {
+            this.x=x;this.y=y;this.type=type;
+            this.fromLevel=fromLevel;this.toLevel=toLevel;
+        }
+        public boolean isGrowth() {return toLevel>fromLevel;}
+    }
+    public List<GrowthEvent> recentEvents() {return publicEvents;}
+
 
     public City() { this(0); }
 
@@ -48,7 +66,7 @@ public final class City {
         for (int i = -3; i <= 3; i++) {
             if (i == 0) continue;
             tiles[cx + i][cy - 1] = new Tile(TileType.RESIDENTIAL, 1);
-            tiles[cx + i][cy + 1] = new Tile(i > 0 ? TileType.COMMERCIAL : TileType.RESIDENTIAL, 1);
+            tiles[cx + i][cy + 1] = new Tile(i > 0 ? TileType.COMMERCIAL : TileType.INDUSTRIAL, 1);
         }
     }
 
@@ -241,6 +259,7 @@ public final class City {
      */
     public void nextDay() {
         CityEconomy report = economy();
+        recentEvents.clear();
         day++;
         final TileType[] categories={TileType.RESIDENTIAL,TileType.COMMERCIAL,TileType.INDUSTRIAL};
         for(int i=0;i<categories.length;i++) {
@@ -248,28 +267,44 @@ public final class City {
             else lowDemandDays[i]=0;
         }
         lastIncome = report.net;
-        // Legacy saves store a nonnegative balance. A deficit consumes the treasury
-        // down to zero rather than writing an incompatible negative money field.
+        // Existing CVT3 saves require a non-negative treasury.
         money = (int)Math.max(0L,Math.min(Integer.MAX_VALUE,(long)money + report.net));
-        for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++) {
-            Tile t = tiles[x][y];
-            if (!t.type.isZone()) continue;
+        // A visible city should get new buildings early without exhausting the
+        // entire supply in one tick. The deterministic daily cap also prevents
+        // fast-forward bursts of dozens of instant developments.
+        int vacantLimit = Math.max(1, Math.min(6, 1+zones()/14));
+        int occupiedToday=0;
+        // Different daily scan origins avoid growth always favouring the same
+        // side of the map, while remaining deterministic across save reloads.
+        int originX=Math.floorMod(day*17,WIDTH);
+        int originY=Math.floorMod(day*23,HEIGHT);
+        for(int xi=0;xi<WIDTH;xi++) for(int yi=0;yi<HEIGHT;yi++) {
+            int x=(originX+xi)%WIDTH, y=(originY+yi)%HEIGHT;
+            Tile t=tiles[x][y];
+            if(!t.type.isZone()) continue;
             boolean accessible=hasRoad(x,y);
             int demand=report.demand(t.type);
-            // A sustained lack of demand or road access can cause gradual abandonment.
-            // No building is removed in a single day just because demand dipped.
-            if (t.level>0 && ((!accessible && day>=14) ||
-                (accessible && demand<20 && lowDemandDays(t.type)>=12))) {
-                float declineChance=!accessible?0.045f:0.02f+(20-demand)*0.0015f;
-                if (growthRoll(day,x,y,17)<declineChance) t.level--;
+            if(t.level>0 && ((!accessible && day>=14) ||
+                    (accessible && demand<20 && lowDemandDays(t.type)>=12))) {
+                float chance=!accessible?0.045f:0.02f+(20-demand)*0.0015f;
+                if(growthRoll(day,x,y,17)<chance) {
+                    int from=t.level--;
+                    recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
+                }
                 continue;
             }
-            if (!accessible || demand<24) continue;
-            // Level 0 can grow readily; taller buildings require sustained demand.
-            float rate=t.level==0?0.018f + demand*0.0017f:
-                t.level==1?0.001f + demand*0.00028f:
-                t.level==2?0.0005f + demand*0.00012f:0f;
-            if (t.level < 3 && growthRoll(day,x,y,0) < rate) t.level++;
+            if(!accessible || demand<24 || t.level>=3)continue;
+            if(t.level==0 && occupiedToday>=vacantLimit)continue;
+            // Empty roadside lots develop quickly; established buildings gain
+            // levels progressively. High demand visibly improves the rhythm.
+            float rate=t.level==0?0.075f+demand*0.0026f:
+                t.level==1?0.006f+demand*0.00053f:
+                0.002f+demand*0.00025f;
+            if(growthRoll(day,x,y,0)<rate) {
+                int from=t.level++;
+                if(from==0)occupiedToday++;
+                recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
+            }
         }
     }
 
@@ -280,6 +315,7 @@ public final class City {
     void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays) {
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];
+        recentEvents.clear();
         money = restoredMoney;
         day = restoredDay;
         lastIncome = restoredIncome;

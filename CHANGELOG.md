@@ -1,3 +1,14 @@
+# 0.4.0-alpha1-life — ritmo, bairros e movimentação (2026-10-10)
+
+- Cidade nova equilibrada com indústria e comércio iniciais; população, empregos e economia visualmente mais compreensíveis.
+- Penalty por lote vago suavizada: R2/C3/I3; permite zonear pequenas quadras sem travar a demanda.
+- Ocupação de terrenos vazios priorizada com chance maior, limitada a até seis novas construções por dia; níveis altos seguem graduais.
+- Dias de 2,55s em 1×; velocidade 2×/4× e pausa preservadas.
+- `CityActivity` determinístico: até 18 carros nas ruas e 26 pedestres próximos a edifícios, sem novos assets.
+- `GrowthEvent` efêmero e efeitos luminosos para construções/abandono; eventos não entram nos saves CVT3.
+- Novo `CityLifeTest`, regressões anteriores e CI Android. QA físico pendente.
+- ID do app, chave de desenvolvimento e formato CVT3 mantidos. Versão code 10.
+
 # 0.3.0-alpha2 — Impostos e orçamento
 
 - Painel ECON com impostos de 5 a 20%, receita residencial/comercial/industrial, manutenção de ruas e lotes, saldo e demanda.
