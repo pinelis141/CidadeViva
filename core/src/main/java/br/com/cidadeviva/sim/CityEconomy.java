@@ -4,9 +4,10 @@ package br.com.cidadeviva.sim;
  * Daily economy derived only from CVT3-persisted tiles, treasury and tax policy.
  * No hidden simulation counters: reloading the same city produces the same result.
  *
- * Jobs are CAPACITY, not automatically taxable employment. An occupied building
- * contributes jobs only while it has adjacent road access. Employees are shared
- * proportionately between commercial and industrial establishments.
+ * Jobs are CAPACITY, not automatically taxable employment. Houses supply workers;
+ * real road paths and maximum travel distances constrain who fills each job.
+ * Workers choose reachable vacancies by road distance, never teleporting across
+ * disconnected districts. Aggregate commuters are not saved or individually modeled.
  */
 public final class CityEconomy {
     public final int population;
@@ -20,6 +21,9 @@ public final class CityEconomy {
     public final int inactiveJobs;
     public final int accessiblePopulation;
     public final int qualityOfLife;
+    /** Only workers who actually reach a workplace through connected roads. */
+    public final int commutingResidents, disconnectedResidents, reachableJobs, commuteSteps, congestedRoads;
+    public final CityMobility mobility;
     public final int residentialDemand;
     public final int commercialDemand;
     public final int industrialDemand;
@@ -39,7 +43,8 @@ public final class CityEconomy {
                         int residentialDemand, int commercialDemand, int industrialDemand,
                         int taxResidential, int taxCommercial, int taxIndustrial,
                         int roadMaintenance, int zoneMaintenance, int unserved,
-                        int rateR, int rateC, int rateI, int qualityOfLife) {
+                        int rateR, int rateC, int rateI, int qualityOfLife,
+                        CityMobility mobility) {
         this.population=population;
         this.jobs=jobs;
         this.commercialJobs=commerce;
@@ -47,8 +52,14 @@ public final class CityEconomy {
         this.accessiblePopulation=accessiblePopulation;
         this.operationalJobs=operationalJobs;
         this.inactiveJobs=jobs-operationalJobs;
-        this.employed=Math.min(accessiblePopulation,operationalJobs);
+        this.employed=mobility.employed;
         this.unemployed=population-employed;
+        this.mobility=mobility;
+        this.commutingResidents=mobility.reachableResidents;
+        this.disconnectedResidents=mobility.disconnectedResidents;
+        this.reachableJobs=mobility.reachableJobCapacity;
+        this.commuteSteps=mobility.averageCommuteSteps;
+        this.congestedRoads=mobility.congestedRoads;
         this.jobVacancies=Math.max(0,operationalJobs-employed);
         this.residentialDemand=residentialDemand;
         this.commercialDemand=commercialDemand;
@@ -79,7 +90,8 @@ public final class CityEconomy {
         if(!hasRoad)return "SEM RUA ADJACENTE";
         if(demand(type)<24) {
             if(type==TileType.RESIDENTIAL)
-                return jobVacancies==0 && unemployed>0 ? "FALTAM EMPREGOS" : "OFERTA OU IMPOSTO ALTO";
+                return disconnectedResidents>0?"TRABALHO SEM CONEXAO":
+                    jobVacancies==0 && unemployed>0 ? "FALTAM EMPREGOS" : "OFERTA OU IMPOSTO ALTO";
             if(type==TileType.COMMERCIAL)return "COMERCIO SATURADO / IMPOSTO";
             return "INDUSTRIA SATURADA / IMPOSTO";
         }
@@ -137,9 +149,10 @@ public final class CityEconomy {
             }
         }
         int activeJobs=activeCommerce+activeIndustry;
-        int employed=Math.min(accessiblePopulation,activeJobs);
-        int employedCommerce=activeJobs==0?0:Math.min(activeCommerce, (int)Math.round((double)employed*activeCommerce/activeJobs));
-        int employedIndustry=employed-employedCommerce;
+        CityMobility mobility=CityMobility.analyze(city);
+        int employed=mobility.employed;
+        int employedCommerce=mobility.commercialWorkers;
+        int employedIndustry=mobility.industrialWorkers;
         int rateR=city.taxRate(TileType.RESIDENTIAL);
         int rateC=city.taxRate(TileType.COMMERCIAL);
         int rateI=city.taxRate(TileType.INDUSTRIAL);
@@ -154,8 +167,12 @@ public final class CityEconomy {
         int net=rTax+cTax+iTax-roadCost-zoneCost;
         int employmentRatio=population==0?100:(int)((long)employed*100/population);
         int accessRatio=zones==0?100:100-(int)((long)unserved*100/zones);
+        int commuteRatio=accessiblePopulation==0?100:
+            (int)((long)mobility.reachableResidents*100/accessiblePopulation);
         int quality=population==0?20:clamp(20 + employmentRatio*40/100 + accessRatio*25/100
             + (net>=0?10:0) - Math.max(0,rateR-10)*2
+            - (100-commuteRatio)/3 - Math.min(12,mobility.congestedRoads*2)
+            - Math.max(0,mobility.averageCommuteSteps-12)/2
             - (city.money()==0 && net<0?14:0),5,95);
         // Ratios prevent an enormous city from reaching demand limits merely
         // because it has more absolute residents than a starter town.
@@ -163,15 +180,20 @@ public final class CityEconomy {
         int taxPenaltyC=2*(rateC-10);
         int taxPenaltyI=2*(rateI-10);
         int fiscalPressure=net<0 && city.money()<1500?12:0;
-        int residential=clamp(52+pressure(activeJobs-population,population,40)
+        int disconnectedJobs=activeJobs-mobility.reachableJobCapacity;
+        int disconnectedPenalty=activeJobs==0?0:
+            Math.min(22,(int)((long)disconnectedJobs*30/activeJobs));
+        // Connected jobs are useful to a neighborhood; inaccessible capacity
+        // cannot attract workers or justify speculative residential expansion.
+        int residential=clamp(52+pressure(mobility.reachableJobCapacity-population,population,40)
             -supplyPenalty(emptyR)-taxPenaltyR-(quality<45?(45-quality)/2:0)
             -fiscalPressure,5,95);
         int commercial=clamp(45+pressure(accessiblePopulation-2*activeCommerce,population,35)
-            -supplyPenalty(emptyC)-taxPenaltyC-fiscalPressure,5,95);
-        int industrial=clamp(45+pressure(accessiblePopulation-activeJobs,population,32)
-            -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure,5,95);
+            -supplyPenalty(emptyC)-taxPenaltyC-fiscalPressure-disconnectedPenalty,5,95);
+        int industrial=clamp(45+pressure(accessiblePopulation-mobility.reachableJobCapacity,population,32)
+            -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure-disconnectedPenalty,5,95);
         return new CityEconomy(population,commerce+industry,commerce,industry,
             accessiblePopulation,activeJobs,residential,commercial,industrial,
-            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality);
+            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility);
     }
 }

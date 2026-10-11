@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Cosmetic road vehicles and neighborhood walkers, independent of saved economy.
+/** Road vehicles sample measured commuter traffic; walkers animate occupied neighborhoods.
  * Every car follows actual four-neighbour road tiles and reverses at dead ends;
  * there is no path across water, buildings or off-map tiles.
  */
@@ -15,17 +15,20 @@ public final class CityActivity {
     private final List<Walker> walkers;
 
     public CityActivity(City city) {
+        CityMobility mobility=city.economy().mobility;
         ArrayList<int[]> roads=new ArrayList<>();
         ArrayList<int[]> buildings=new ArrayList<>();
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++) {
             Tile tile=city.tile(x,y);
-            if(tile.type==TileType.ROAD && city.roadMask(x,y)!=0) roads.add(new int[]{x,y});
+            // No phantom rush-hour vehicles on unused or inaccessible roads.
+            if(tile.type==TileType.ROAD && city.roadMask(x,y)!=0 &&
+               mobility.trafficAt(x,y)>0)roads.add(new int[]{x,y});
             if(tile.type.isZone() && tile.level>0 && city.hasRoad(x,y)) buildings.add(new int[]{x,y});
         }
         ArrayList<Car> moving=new ArrayList<>();
         // A sparse starting town gets movement immediately; extensive cities have
         // a hard cap to protect frame time and avoid unrealistic traffic clutter.
-        int carCount=Math.min(18,roads.size()/3);
+        int carCount=Math.min(18,Math.min(roads.size(),mobility.employed/7));
         for(int i=0;i<carCount;i++) {
             int[] position=roads.get(Math.floorMod(i*17+i*i*11+3,roads.size()));
             ArrayList<int[]> route=new ArrayList<>();
@@ -38,7 +41,7 @@ public final class CityActivity {
                     int nx=position[0]+DX[direction],ny=position[1]+DY[direction];
                     Tile candidate=city.tile(nx,ny);
                     if(candidate!=null && candidate.type==TileType.ROAD &&
-                       !(nx==px && ny==py)) {
+                       mobility.trafficAt(nx,ny)>0 && !(nx==px && ny==py)) {
                         options[size][0]=nx;options[size][1]=ny;size++;
                     }
                 }

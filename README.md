@@ -1,3 +1,15 @@
+## 0.5.0 Alpha 1 — a cidade como simulação, não apenas cenário
+
+A **rede de ruas** agora determina empregos reais: moradores procuram vagas em lojas e fábricas acessíveis por um caminho contínuo de ruas, até **24 trechos viários**. Edifícios com rua ao lado mas isolados da cidade não recebem trabalhadores por teletransporte. Empregos são alocados em ordem de proximidade e disponibilidade; salário individual e famílias ainda não são modelados. Consertar uma ligação viária atualiza trabalho, arrecadação e atividade urbana.
+
+- **Comutação urbana agregada:** algoritmo determinístico de menor trajeto (`CityMobility`), limitado a 48×48 células e recalculado somente após alterações/dia.
+- **Economia espacial:** impostos de comércio e indústria dependem de trabalhadores realmente alocados por rua; desemprego e vagas podem coexistir em bairros sem ligação. A demanda empresarial penaliza a oferta de empregos inalcançáveis.
+- **Trânsito com causa:** carros decorativos agora surgem nas ruas **realmente percorridas por trabalhadores**, não aleatoriamente em trechos sem função; a concentração de viagens gera um indicador de congestionamento e reduz qualidade urbana.
+- **HUD ECON:** trabalha com trajetos médios, trabalhadores ocupados e trechos congestionados; alertas incluem moradores sem conexão ao trabalho.
+- **Segurança:** salvamentos `CVT3`, impostos, três espaços, edifícios, atlas de 125 sprites e mesma assinatura DEV permanecem compatíveis. Não faz simulação individual de veículos, saúde, água, energia ou poluição nesta etapa.
+
+Veja [DESIGN-SIMULACAO-0.5.md](DESIGN-SIMULACAO-0.5.md) e [QA-ANDROID-0.5.0-alpha1.md](QA-ANDROID-0.5.0-alpha1.md). Instale **por cima do Cidade Viva Teste**, sem desinstalar.
+
 > **Atualização Alpha 5 — economia:** a arrecadação passou a depender de empregos ocupados e ruas acessíveis; manutenção cresce por nível, os impostos têm retorno decrescente e o novo índice QUALIDADE aparece na interface. Demolição agora é gratuita para permitir recuperação de cidades em crise. Veja [DESIGN-BALANCEAMENTO-0.4-ALPHA5.md](DESIGN-BALANCEAMENTO-0.4-ALPHA5.md) e [QA-ANDROID-0.4.0-alpha5-balance.md](QA-ANDROID-0.4.0-alpha5-balance.md). Salvamentos CVT3 continuam compatíveis.
 
 ## 0.4.0 Alpha 4 — correção de legibilidade dos bairros

@@ -195,8 +195,9 @@ public final class CityGame extends ApplicationAdapter {
                         growthNoticeCooldown=4.8f;
                     }
                 }
-                // Purely visual traffic routes respond to new roads and buildings.
-                if(!city.recentEvents().isEmpty())refreshActivity();
+                // Traffic follows the current commuting flows. Refresh only every
+                // five in-game days unless a building changed to limit allocations.
+                if(!city.recentEvents().isEmpty() || city.day()%5==0)refreshActivity();
                 if (city.day() % 15 == 0) save(false);
             }
         }
@@ -655,9 +656,11 @@ public final class CityGame extends ApplicationAdapter {
         int missing=eco.unserved;
         int nextGoal=CityMilestones.nextGoal(city.residents());
         label(missing>0?"! "+missing+" ZONAS SEM RUA":
+            eco.disconnectedResidents>0?"! "+eco.disconnectedResidents+" SEM LIGACAO AO TRABALHO":
+            eco.congestedRoads>=3?"! "+eco.congestedRoads+" RUAS CONGESTIONADAS":
             nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
             missing>0?amber:good,(w-32*u)*0.48f);
-        String labor="QUAL "+eco.qualityOfLife+"  |  DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
+        String labor="QUAL "+eco.qualityOfLife+" | TRAB "+eco.employed+" | DES "+eco.unemployed;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
         for(int i=0;i<HudLayout.ACTIONS;i++) {
             String text=(i==0&&simulationPaused)?"SEGUIR":i==1?simulationSpeed+"X":
@@ -792,8 +795,8 @@ public final class CityGame extends ApplicationAdapter {
         label("ECONOMIA",x+21*u,y+520*u,1.62f,white,ww-42*u);
         label("Taxas de 5% a 20%: excesso reduz arrecadacao",
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
-        label("QUALIDADE "+report.qualityOfLife+"/100  |  TRABALHANDO "+report.employed+
-            "/"+report.population,x+21*u,y+465*u,0.95f,sub,ww-42*u);
+        label("QUAL "+report.qualityOfLife+" | EMP "+report.employed+"/"+report.population+
+            " | VIAGEM "+report.commuteSteps+" | TRANS "+report.congestedRoads,x+21*u,y+465*u,0.95f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
             int demand=report.demand(TAX_TYPES[i]);
