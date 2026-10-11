@@ -28,3 +28,16 @@ Tráfego e pedestres são **efeitos visuais**, não possuem acidentes, engarrafa
 6. Confirmar desempenho aceitável ao ampliar e reduzir o mapa em Android.
 
 Testes: `bash tools/test-core.sh` (inclui `CityLifeTest`) e `python3 tools/verify_atlas.py`. Compilação Android no GitHub Actions.
+
+
+## Alpha 2 — Identidade de bairro, câmera e marcos
+
+**Arte**: atlas RGBA 576×1920, 116 quadros de 72×128, 8 colunas. IDs 0–79 preservados; 80–115 contêm 4 novos estilos × 3 níveis × 3 setores. Casas incluem sobrados azuis, apartamentos de varanda, telhados lilases e prédios grafite. Comércios incluem hortifruti, café, lanchonete e escritório. Indústria inclui tijolos vermelhos, tubulações azuis, armazém e fundição metálica. Sprites gerados por `tools/generate_pixel_atlas.py` com Pillow, sem dependência adicional no aplicativo.
+
+**Simulação**: marcos dependem só da transição real de população entre dias. Avisos não geram novas regras econômicas e não são salvos. Ao reabrir save acima do marco, não se repete a conquista anterior; a próxima é mostrada quando atingida. Sem ganhos financeiros automáticos para não interferir no CVT3.
+
+**Câmera**: ponderação das edificações ocupadas (peso 5), zonas vazias (2) e ruas (1), ignorando mata e água; sugestão de zoom com margens e limites. Foco é reposicionado verticalmente pela área ocupada pelo topo e ferramentas inferiores. O jogador continua podendo mover e usar pinça manualmente.
+
+**HUD**: texto de status das demandas e barras R/C/I ficam em faixas separadas no mesmo cartão. Sinal de meta é informativo, sem ocultar alertas de ruas ausentes.
+
+**Próximos passos**: validar pixel art e legibilidade em Android físico, iterar nos sprites de ruas/pedestres, melhorar marcos com recompensas de gameplay testadas e adicionar serviços (energia, água) após feedback. Não confundir animações de carros com trânsito simulado.

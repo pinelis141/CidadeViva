@@ -1,3 +1,13 @@
+## 0.4.0-alpha2-evolution — 10/10/2026
+
+- Atlas ampliado de 80 para **116 sprites originais**; quatro arquiteturas adicionais por categoria e nível (36 novos prédios), preservando todos os índices anteriores.
+- Variante de prédio por lote permanece determinística e acompanha crescimento visual sem alterar IDs ou níveis no save.
+- `CityFocus`: novo enquadramento do centro urbano e zoom proporcional à área construída; acionado ao iniciar, trocar/abrir cidade e tocar em CENTRAR.
+- `CityMilestones`: metas de moradores acionadas apenas ao cruzar patamares reais (100/250/500/1.000/2.500/5.000/10.000/25.000/50.000), com aviso temporário e objetivo seguinte no HUD.
+- Barra de demanda: separação vertical entre texto BAIXA/MEDIA/ALTA e preenchimento da barra.
+- CVT3 não modificado. Testes Java: **66.764 verificações novas** de aparência, foco, marcos e continuidade dos saves.
+- Build CI Android e QA em celular: verificar resultados separadamente.
+
 # 0.4.0-alpha1-life — ritmo, bairros e movimentação (2026-10-10)
 
 - Cidade nova equilibrada com indústria e comércio iniciais; população, empregos e economia visualmente mais compreensíveis.

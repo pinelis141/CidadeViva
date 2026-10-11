@@ -4,6 +4,8 @@ import br.com.cidadeviva.sim.City;
 import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.CityEconomy;
 import br.com.cidadeviva.sim.CityActivity;
+import br.com.cidadeviva.sim.CityMilestones;
+import br.com.cidadeviva.sim.CityFocus;
 import br.com.cidadeviva.sim.Tile;
 import br.com.cidadeviva.sim.TileType;
 import br.com.cidadeviva.input.HudLayout;
@@ -76,6 +78,8 @@ public final class CityGame extends ApplicationAdapter {
     private final ArrayList<GrowthPulse> growthPulses=new ArrayList<>();
     private final Vector3 projectedGrowth=new Vector3();
     private float growthNoticeCooldown=0f;
+    private CityMilestones.Milestone milestoneBanner;
+    private float milestoneClock=0f;
 
     private static final class GrowthPulse {
         final int x,y,level;
@@ -149,6 +153,7 @@ public final class CityGame extends ApplicationAdapter {
             Gdx.app.error("CidadeViva","Erro ao abrir cidade ativa",e);
         }
         refreshActivity();
+        focusOnCity(false);
     }
 
     @Override public void resize(int width,int height) {
@@ -163,6 +168,7 @@ public final class CityGame extends ApplicationAdapter {
     @Override public void render() {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
         toastClock -= delta;
+        milestoneClock=Math.max(0f,milestoneClock-delta);
         if (!simulationPaused && savesReady && !slotsVisible && !economyVisible && !helpVisible) {
             activityClock += delta;
             growthNoticeCooldown=Math.max(0f,growthNoticeCooldown-delta);
@@ -175,6 +181,10 @@ public final class CityGame extends ApplicationAdapter {
             while (simClock >= SECONDS_PER_DAY) {
                 simClock -= SECONDS_PER_DAY;
                 city.nextDay();
+                if(!city.recentMilestones().isEmpty()) {
+                    milestoneBanner=city.recentMilestones().get(city.recentMilestones().size()-1);
+                    milestoneClock=6.7f;
+                }
                 for(City.GrowthEvent event:city.recentEvents()) {
                     if(growthPulses.size()>=MAX_GROWTH_PULSES)growthPulses.remove(0);
                     growthPulses.add(new GrowthPulse(event));
@@ -570,9 +580,9 @@ public final class CityGame extends ApplicationAdapter {
             float bx=10*u+i*(demandWidth+gap);
             card(bx,h-169*u,demandWidth,55*u,sector[i],false);
             shapes.setColor(rgb(54,76,84));
-            shapes.rect(bx+10*u,h-157*u,demandWidth-20*u,8*u);
+            shapes.rect(bx+10*u,h-165*u,demandWidth-20*u,6*u);
             shapes.setColor(demand[i]>=60?good:demand[i]>=30?amber:bad);
-            shapes.rect(bx+10*u,h-157*u,Math.max(0,demandWidth-20*u)*demand[i]/100f,8*u);
+            shapes.rect(bx+10*u,h-165*u,Math.max(0,demandWidth-20*u)*demand[i]/100f,6*u);
         }
         // Thin alert/diagnostics band.
         shapes.setColor(rgb(30,52,60));
@@ -605,6 +615,8 @@ public final class CityGame extends ApplicationAdapter {
             shapes.rect(8*u,iy,4*u,HudLayout.INSPECTOR_HEIGHT*u);
             card(w-59*u,iy+42*u,44*u,36*u,cyan,false);
         }
+        if(milestoneClock>0 && milestoneBanner!=null &&
+            !helpVisible && !slotsVisible && !economyVisible)drawMilestoneShape(u);
         if(helpVisible) {
             shapes.setColor(0.01f,0.02f,0.03f,0.88f);shapes.rect(0,0,w,h);
             card(15*u,h*0.5f-135*u,w-30*u,270*u,cyan,false);
@@ -638,11 +650,12 @@ public final class CityGame extends ApplicationAdapter {
                 demandWidth-55*u);
             label(""+demand[i],x+demandWidth-48*u,h-127*u,1.40f,white,40*u);
             label(demand[i]>=60?"ALTA":demand[i]>=30?"MEDIA":"BAIXA",
-                x+10*u,h-146*u,0.86f,muted,demandWidth-20*u);
+                x+10*u,h-144*u,0.86f,muted,demandWidth-20*u);
         }
         int missing=eco.unserved;
+        int nextGoal=CityMilestones.nextGoal(city.residents());
         label(missing>0?"! "+missing+" ZONAS SEM RUA":
-            "BAIRROS EM EVOLUCAO",17*u,h-178*u,0.98f,
+            nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
             missing>0?amber:good,(w-32*u)*0.48f);
         String labor="DES "+eco.unemployed+"  |  VAGAS "+eco.jobVacancies;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
@@ -660,6 +673,8 @@ public final class CityGame extends ApplicationAdapter {
         }
         if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
             !slotsVisible && !economyVisible)drawInspector(u,eco);
+        if(milestoneClock>0 && milestoneBanner!=null &&
+            !helpVisible && !slotsVisible && !economyVisible)drawMilestoneText(u);
         float toastY=(HudLayout.BOTTOM_HEIGHT+18)*u;
         if(inspectorVisible && city.inBounds(hoverX,hoverY))
             toastY+=(HudLayout.INSPECTOR_HEIGHT+8)*u;
@@ -678,6 +693,31 @@ public final class CityGame extends ApplicationAdapter {
         if(economyVisible)drawEconomyText(u,eco);
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    /** Celebrations are short-lived and do not change economy or persisted state. */
+    private float milestoneW(float u) {return Math.min(w-28*u,420*u);}
+    private float milestoneY(float u) {return h-(HudLayout.TOP_HEIGHT+101)*u;}
+    private void drawMilestoneShape(float u) {
+        float ww=milestoneW(u),x=(w-ww)*0.5f,y=milestoneY(u);
+        shapes.setColor(0.025f,0.12f,0.13f,0.95f);
+        shapes.rect(x,y,ww,76*u);
+        shapes.setColor(rgb(244,199,105));
+        shapes.rect(x,y+73*u,ww,3*u);
+        shapes.rect(x+9*u,y+15*u,4*u,46*u);
+        // Pixel medal: no extra texture or GPU allocation.
+        shapes.rect(x+24*u,y+26*u,27*u,27*u);
+        shapes.setColor(rgb(85,76,55));
+        shapes.rect(x+30*u,y+32*u,15*u,15*u);
+        shapes.setColor(rgb(244,199,105));
+        shapes.rect(x+36*u,y+35*u,3*u,9*u);
+    }
+    private void drawMilestoneText(float u) {
+        float ww=milestoneW(u),x=(w-ww)*0.5f,y=milestoneY(u);
+        label(milestoneBanner.title,x+62*u,y+52*u,1.20f,
+            rgb(255,222,150),ww-76*u);
+        label(milestoneBanner.detail,x+62*u,y+27*u,1.07f,
+            rgb(235,246,238),ww-76*u);
     }
 
     private void drawInspector(float u,CityEconomy report) {
@@ -898,6 +938,7 @@ public final class CityGame extends ApplicationAdapter {
                 city=opened.city;
                 refreshActivity();
                 growthPulses.clear();
+                milestoneClock=0f;
                 savesReady=true;
                 slotsVisible=false;
                 economyVisible=false;
@@ -937,6 +978,8 @@ public final class CityGame extends ApplicationAdapter {
             city = result.city;
             refreshActivity();
             growthPulses.clear();
+            milestoneClock=0f;
+            focusOnCity(false);
             savesReady=true;
             if (result.fromBackup) message("Backup recuperado! Salve novamente.");
             else if (feedback) message("Cidade carregada!");
@@ -963,11 +1006,18 @@ public final class CityGame extends ApplicationAdapter {
         camera.update();
     }
 
-    private void recenter() {
-        camera.position.set(0,-(City.WIDTH/2f+City.HEIGHT/2f)*HALF_H,0);
+    private void focusOnCity(boolean feedback) {
+        CityFocus.Target focus=CityFocus.forCity(city);
+        float u=uiScale;
+        camera.zoom=focus.suggestedZoom(w,h,HudLayout.TOP_HEIGHT*u,HudLayout.BOTTOM_HEIGHT*u);
+        // Adjust for UI obscuring more of the map at the top than bottom.
+        float verticalOffset=(HudLayout.TOP_HEIGHT-HudLayout.BOTTOM_HEIGHT)*u*0.5f*camera.zoom;
+        camera.position.set(focus.x,focus.y+verticalOffset,0);
         clampCamera();
-        message("Camera centralizada");
+        if(feedback)message("Bairro reenquadrado");
     }
+
+    private void recenter() {focusOnCity(true);}
 
     private void pan(float dx,float dy) {
         camera.position.add(-dx*camera.zoom,dy*camera.zoom,0);

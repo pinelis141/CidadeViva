@@ -1,3 +1,19 @@
+# Cidade Viva 0.4 Alpha 2 — bairros com identidade e metas urbanas
+
+**Versão Android DEV: `0.4.0-alpha2-evolution` (versionCode 11).**
+
+- **116 sprites isométricos originais**, incluindo 36 novos edifícios com arquiteturas e cores realmente diferentes por setor e por nível. Variação depende das coordenadas do lote e continua estável entre upgrades/loads; nenhuma construção é substituída.
+- **Câmera inteligente**: abrir um save, trocar de cidade ou tocar em CENTRAR enquadra o núcleo urbano real e o reposiciona abaixo do HUD. O zoom sugerido respeita a área efetivamente construída; pinça e arrasto continuam livres.
+- **Metas de população**: após cruzar 100, 250, 500, 1.000, 2.500 etc. moradores, aparece uma celebração temporária. O HUD avisa o próximo objetivo caso não existam zonas sem rua. Não há dinheiro fictício nem desbloqueio automático.
+- **Demanda R/C/I legível**: o indicador BAIXA/MEDIA/ALTA foi separado das barras de progresso para evitar sobreposição.
+- Os testes de 0.4 Alpha 1 (veículos, pedestres, crescimento perceptível, economia) e os salvos **CVT3** permanecem inalterados.
+
+**Atenção:** instale por cima do *Cidade Viva Teste*, sem desinstalar. Não faça downgrade para versões anteriores ao formato CVT3. QA físico ainda é obrigatório para validar legibilidade, enquadramento e sensação de progresso.
+
+[Plano visual e critérios de aceite](DESIGN-CIDADE-VIVA-0.4.md) · [QA Android desta versão](QA-ANDROID-0.4.0-alpha2-evolution.md).
+
+---
+
 # Cidade Viva 0.4 — cidade que evolui e se movimenta
 
 **Versão de desenvolvimento: `0.4.0-alpha1-life` (Android DEV).**

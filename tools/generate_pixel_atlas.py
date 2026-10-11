@@ -234,7 +234,92 @@ def landmark_variant(style,level):
     return im
 for style in range(3):
     for level in range(1,4):add(landmark_variant(style,level)) # 71-79
-assert len(sprites)==80,len(sprites)
+# Alpha 2: four intentionally distinct architectural silhouettes and palettes per
+# sector and level, maintaining the old 80 sprite IDs for backwards compatibility.
+def neighborhood_variant(style,level,variation):
+    im=building(style,level,variation%2)
+    data=im.load()
+    base_colors=(
+        [('#ecd3a0','#c1a778','#bd655f','#855b53'),('#b9c9a4','#8aa186','#a47058','#6a5246')],
+        [('#d2e7df','#86b7c6','#4c9bad','#436e7b'),('#d9dac0','#86aaa6','#618e86','#4c6e70')],
+        [('#c2a385','#987c68','#667d7c','#586360'),('#b49b86','#8b7d77','#727479','#5c5d65')]
+    )
+    colorways=(
+        [('#d6e6dc','#8ea9a7','#5484b5','#4a6582'),('#ebc3a5','#c38b80','#d99449','#96673f'),('#ded3eb','#aaa2ca','#8b6697','#604f77'),('#d4dcdb','#899ca5','#465365','#303a48')],
+        [('#eef0d7','#adc39d','#4c986c','#38684f'),('#f3d4b4','#d09b8e','#cf6a57','#a0454a'),('#dad6ed','#9f97c5','#9a70ae','#705684'),('#cedce6','#7e9bb6','#426b9b','#375879')],
+        [('#d0b49a','#92715d','#a75e40','#7e4337'),('#b8d4db','#7b9fab','#457d9c','#376076'),('#d5cda1','#9a9878','#c5a455','#947d43'),('#b6bfc4','#77888e','#515f70','#39444f')]
+    )
+    from PIL import ImageColor
+    old=base_colors[style][variation%2]
+    new=colorways[style][variation]
+    palette={ImageColor.getrgb(src)+(255,):ImageColor.getrgb(dst)+(255,) for src,dst in zip(old,new)}
+    for py in range(CH):
+        for px in range(CW):
+            color=data[px,py]
+            if color in palette:data[px,py]=palette[color]
+    d=ImageDraw.Draw(im)
+    heights=([32,48,63] if style==0 else [26,43,58] if style==1 else [25,38,49])
+    top=109-heights[level-1]
+    if style==0:
+        if variation==0: # tiled blue townhouses with a roof dormer
+            d.rectangle((31,top-2,40,top+7),fill='#d2e9ea')
+            p(d,[(29,top-2),(41,top-2),(35,top-8)],'#336080')
+            d.rectangle((20,97,24,104),fill='#43875e')
+            d.rectangle((52,94,55,101),fill='#43875e')
+        elif variation==1: # ochre apartments with balconies
+            for floor in range(level):
+                yy=top+31+floor*12
+                d.line((19,yy,33,yy+4),fill='#704f46',width=3)
+                d.line((41,yy+4,55,yy),fill='#704f46',width=3)
+            d.rectangle((44,top-1,49,top+9),fill='#ac694c')
+        elif variation==2: # pink roof and window boxes
+            for yy in range(top+29,104,11):
+                d.rectangle((21,yy,27,yy+2),fill='#477e66')
+                d.rectangle((45,yy,51,yy+2),fill='#a9d883')
+            d.polygon([(27,top+6),(36,top-4),(45,top+6)],fill='#e1b5d7')
+        else: # slate corner flat, tall vertical window ribbon
+            d.rectangle((28,top+24,32,101),fill='#b6d4e3')
+            d.rectangle((45,top+23,49,max(top+24,96)),fill='#8fbcd1')
+            d.rectangle((16,94,23,100),fill='#57877a')
+    elif style==1:
+        if variation==0: # green produce market
+            d.rectangle((17,88,35,94),fill='#b2d98b')
+            d.rectangle((38,87,55,93),fill='#72b47c')
+            for i in range(4):d.rectangle((20+i*9,96,23+i*9,98),fill='#e6d78f')
+        elif variation==1: # warm cafe, patio lamps
+            d.rectangle((18,84,54,89),fill='#e5b779')
+            for xx in (19,27,35,43,51):d.point((xx,84),fill='#fbecab')
+            d.rectangle((40,94,47,101),fill='#6e9b9a')
+        elif variation==2: # striped diner canopy
+            for i in range(7):d.rectangle((18+i*5,89,20+i*5,95),fill='#f0e7d7' if i%2 else '#bf738f')
+            d.rectangle((26,top+5,46,top+8),fill='#eecad1')
+        else: # blue office and rooftop antenna
+            for xx in (19,28,42,51):
+                for yy in range(top+25,88,11):d.rectangle((xx,yy,xx+3,yy+5),fill='#b5e7ef')
+            d.line((36,top-12,36,top+1),fill='#c9d5d4',width=2)
+            d.rectangle((33,top-14,39,top-12),fill='#f6b66d')
+    else:
+        if variation==0: # red brick chimney
+            d.rectangle((45,top-20,53,top+12),fill='#ab604d')
+            for yy in range(top-18,top+10,6):d.line((45,yy,53,yy),fill='#e1b696')
+        elif variation==1: # two blue cooling pipes
+            for xx in (20,47):
+                d.rectangle((xx,top-15,xx+5,top+12),fill='#5a8b9e')
+                d.rectangle((xx-1,top-18,xx+6,top-15),fill='#b4cfce')
+        elif variation==2: # cargo warehouse, yellow roof lamps
+            for xx in (22,32,42,52):d.rectangle((xx,top+7,xx+3,top+10),fill='#efda9a')
+            d.rectangle((20,95,33,104),fill='#6a7773')
+            d.rectangle((20,99,33,101),fill='#c5a865')
+        else: # steel works, tall water tower
+            d.rectangle((20,top-15,30,top+14),fill='#8397a1')
+            d.rectangle((18,top-18,32,top-14),fill='#c8d2d2')
+            d.line((23,top+12,23,100),fill='#637985',width=2)
+    return im
+for style in range(3):
+    for level in range(1,4):
+        for variation in range(4):add(neighborhood_variant(style,level,variation)) # 80-115
+assert len(sprites)==116,len(sprites)
+
 
 rows=(len(sprites)+COLS-1)//COLS
 atlas=Image.new('RGBA',(CW*COLS,CH*rows),(0,0,0,0))
