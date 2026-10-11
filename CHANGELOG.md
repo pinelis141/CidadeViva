@@ -1,3 +1,15 @@
+## 0.5.0-alpha1-simulacao — 11/10/2026
+
+- `CityMobility`: rotas reais de casa ao trabalho sobre ruas ortogonais, menor caminho com limite de 24 trechos e alocação determinística por proximidade/vagas.
+- Elimina emprego e tributos que dependiam apenas de rua adjacente mas ignoravam a conexão entre bairros.
+- Fluxo de trabalhadores por trecho viário, tráfego visual concentrado em corredores reais e congestionamento afetando qualidade de vida.
+- Penaliza viagens longas e distritos empresariais sem acesso ao mercado de trabalho na demanda.
+- Economia calculada sob demanda e mantida em cache até modificação, evitando buscar rotas em todos os quadros da tela Android.
+- Indicadores `VIAGEM`, `TRANS`, `TRAB` e aviso de moradores sem conexão no HUD/ECON.
+- +82.238 verificações automatizadas de caminhos, interrupção/recuperação de ruas, ocupação setorial, trânsito, congestionamento e reabertura de CVT3; regressões anteriores intactas.
+- Formato CVT3, assinatura/dev ID, três slots e atlas de 125 sprites preservados. `versionCode 15`.
+- LIMITAÇÕES: mobilidade é agregada, não há veículos físicos simulados individualmente, congestionamentos ainda não alteram tempos de viagem e não há serviços públicos modelados.
+
 ## 0.4.0-alpha5-economia — 11/10/2026
 
 - Rebalanceamento de demanda R/C/I por relações proporcionais de moradores, empregos e oferta de terrenos, com penalidade de raiz quadrada.

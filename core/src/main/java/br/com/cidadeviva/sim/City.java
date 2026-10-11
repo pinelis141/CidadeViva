@@ -15,6 +15,7 @@ public final class City {
     private int money = INITIAL_MONEY;
     private int day = 1;
     private int lastIncome = 0;
+    private CityEconomy cachedEconomy;
     // Per-city settings, persisted in CVT3. Existing CVT1/CVT2 cities default to 10%.
     private final int[] taxRates = {10, 10, 10};
     // Consecutive weak-demand days for each zone category; limits one-day collapses.
@@ -106,6 +107,7 @@ public final class City {
     public void setTaxRate(TileType type,int percent) {
         if (percent<5 || percent>20) throw new IllegalArgumentException("Aliquota deve ser 5% a 20%");
         taxRates[zoneIndex(type)]=percent;
+        cachedEconomy=null;
     }
     public int lowDemandDays(TileType type) {return lowDemandDays[zoneIndex(type)];}
 
@@ -130,6 +132,7 @@ public final class City {
             if (money < cost(type)) return "Dinheiro insuficiente";
             money -= cost(type);
             tiles[x][y] = new Tile(TileType.GRASS);
+            cachedEconomy=null;
             return "Terreno liberado";
         }
         if (type != TileType.ROAD && !type.isZone()) return "Construção inválida";
@@ -139,6 +142,7 @@ public final class City {
         if (money < cost(type)) return "Dinheiro insuficiente";
         money -= cost(type);
         tiles[x][y] = new Tile(type);
+        cachedEconomy=null;
         return "Construído";
     }
 
@@ -193,6 +197,7 @@ public final class City {
             if (canBuild(cell.x,cell.y,type)) tiles[cell.x][cell.y]=new Tile(type);
         }
         money-=estimate.cost;
+        cachedEconomy=null;
         return estimate;
     }
 
@@ -247,7 +252,10 @@ public final class City {
     }
 
     /** A transparent, read-only report recomputed from persisted city tiles. */
-    public CityEconomy economy() { return CityEconomy.analyze(this); }
+    public CityEconomy economy() {
+        if(cachedEconomy==null)cachedEconomy=CityEconomy.analyze(this);
+        return cachedEconomy;
+    }
 
     /** Deterministic local growth roll. Reloading a save never changes the day's random result. */
     private static float growthRoll(int day,int x,int y,int salt) {
@@ -321,6 +329,7 @@ public final class City {
                 recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
             }
         }
+        cachedEconomy=null;
         recentMilestones.addAll(CityMilestones.crossed(populationBefore,residents()));
     }
 
@@ -336,6 +345,7 @@ public final class City {
         money = restoredMoney;
         day = restoredDay;
         lastIncome = restoredIncome;
+        cachedEconomy=null;
         for(int i=0;i<3;i++) {taxRates[i]=rates[i];lowDemandDays[i]=weakDays[i];}
     }
 }
