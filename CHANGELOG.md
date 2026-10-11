@@ -75,3 +75,12 @@
 
 - Controles touch e zoom, limites de câmera, pausa e velocidade.
 - Backup, CRC32 em CVT2 e leitura de CVT1; testes Java.
+
+## 0.3.0-alpha3-ui — HUD 2.0
+
+- Redesenho das barras superior e inferior: cartões legíveis de caixa, população, dia e saldo, faixa de alertas e botões com área de toque preservada.
+- Três cartões visuais de demanda R/C/I com barras de 0 a 100, situação baixa/média/alta e cores funcionais.
+- Ferramentas com pictogramas mais destacados, nomes, custos e seleção evidente.
+- Reformulação visual dos modais ECON e CIDADES sem alterar as regras de impostos e de slots.
+- Novo painel contextual persistente para inspeção de lotes (nível, estrada, demanda e imposto), com proteção contra toques no mapa por trás.
+- Regressões de toque ampliadas; sem mudanças em CVT3 nem na lógica de simulação.

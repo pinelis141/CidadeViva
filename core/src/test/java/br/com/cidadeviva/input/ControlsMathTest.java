@@ -34,6 +34,13 @@ public final class ControlsMathTest {
             ok(HudLayout.actionAt(w*0.5f,40*u,w,u)==-1,"clique na estatística sem ação");
             ok(HudLayout.toolAt(w*0.5f,h-(HudLayout.BOTTOM_HEIGHT+6)*u,w,h,u)==-1,"clique fora do rodapé sem ferramenta");
             ok(!HudLayout.isHud(w/2f,h/2f,w,h,u),"centro é mapa");
+            float inspectorY=h-(HudLayout.BOTTOM_HEIGHT+36)*u;
+            ok(HudLayout.inspectorAt(w/2f,inspectorY,w,h,u),"painel de lote tem area de toque");
+            ok(!HudLayout.isHud(w/2f,inspectorY,w,h,u),"painel flutuante fora do HUD fixo");
+            ok(!HudLayout.inspectorAt(w/2f,h*0.5f,w,h,u),"o mapa nao e painel contextual");
+            ok(HudLayout.isHud(w/2f,75*u,w,h,u),"cartao de status protegido");
+            ok(HudLayout.isHud(w/2f,150*u,w,h,u),"demanda protegida");
+            ok(HudLayout.isHud(w/2f,180*u,w,h,u),"alertas protegidos");
         }
         for (int x=0;x<48;x++) for (int y=0;y<48;y++) {
             int[] point=IsoGrid.pick((x-y)*32f,-(x+y)*16f,32,16);

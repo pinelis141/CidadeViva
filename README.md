@@ -106,3 +106,7 @@ A versão de teste mantém **package separado** (`br.com.cidadeviva.game.dev`) e
 - O botão superior **CENTRAR** permanece disponível ao lado de CIDADES.
 - **AVISO:** a primeira cidade não pode ser recriada enquanto já existir um save; isso é intencional para proteger seu progresso. Não desinstale o app de testes para criar novo mapa.
 - **QA pendente:** avaliar o menu com toques, orientação, troca de slots, reinício e visual do novo mapa no Android real. Checklist em `QA-ANDROID-0.2.0-alpha4.md`.
+
+## HUD 2.0 (0.3.0-alpha3-ui)
+
+A interface Android agora apresenta estatísticas em cartões, demanda R/C/I com barras maiores, alertas compactos, ferramentas com custo, modais reorganizados para ECON e CIDADES, além de inspeção de terrenos. Consulte [UI-HUD-2.0.md](UI-HUD-2.0.md) e [QA-ANDROID-0.3.0-alpha3-ui.md](QA-ANDROID-0.3.0-alpha3-ui.md). Salvos CVT3 e o pacote de testes `br.com.cidadeviva.game.dev` permanecem compatíveis com a Alpha 2.
