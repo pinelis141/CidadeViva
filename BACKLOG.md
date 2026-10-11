@@ -48,6 +48,19 @@ CVT3, 3 slots, impostos, animações de Alpha 1 e assinatura Android DEV preserv
 - [ ] Edifícios **2x2**: ainda pendentes. Implementar detecção de bloco e regras de ocupação, renderização e salvamento separado.
 
 CVT3, impostos, três slots e assinatura DEV preservados; não desinstalar o aplicativo de testes.
+## Atualização — 0.4.0-alpha4 (identidade visual e reenquadramento)
+
+**Feedback vídeo Alpha 3:** prédios roxos legados quebravam o estilo dos 9 novos sprites e o bairro aparecia pequeno demais no Android.
+
+- [x] Retirado fallback visual para fachadas legadas: R/C/I níveis 1–3 usam 100% os nove sprites novos 116–124. Atlas de 125 sprites preservado, sem alteração de PNG.
+- [x] `CityFocus` localiza área urbanizada densa (janela 15×15 por prefixos 2D) e prioriza prédios ocupados; ruas distantes deixam de ampliar zoom automaticamente.
+- [x] Sugestão de zoom inicial mais próxima, com foco adaptado às barras superior/inferior e zoom por pinça manual preservado.
+- [x] Testes Java **76.057 afirmações** da bateria de câmera/marcos/sprites, além de regressões CVT3; CI Android debug verde.
+- [x] [PR #34](https://github.com/pinelis141/CidadeViva/pull/34) integrado à main.
+- [ ] [QA Android #35](https://github.com/pinelis141/CidadeViva/issues/35) exige aprovação em aparelho (identidade, câmera, escala, zoom e salvamentos).
+- [ ] 2×2: footprint e economia ainda precisam ser implementados; não ativar neste marco.
+
+Não altera CVT3, impostos, posições e níveis das três cidades. Atualizar o app de teste sem desinstalar.
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
