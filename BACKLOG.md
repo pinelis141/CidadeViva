@@ -77,6 +77,24 @@ Não altera CVT3, impostos, posições e níveis das três cidades. Atualizar o 
 - [ ] Próxima etapa: prédios maiores 2×2, reforço de variantes e limites de câmera, **somente após validar o equilíbrio**.
 
 Referências: [DESIGN-BALANCEAMENTO-0.4-ALPHA5.md](DESIGN-BALANCEAMENTO-0.4-ALPHA5.md) e [QA-ANDROID-0.4.0-alpha5-balance.md](QA-ANDROID-0.4.0-alpha5-balance.md). **Formato CVT3 e três cidades preservados.**
+## Atualização — 0.5.0-alpha1 (simulação viária e empregos)
+
+**Mudança de direção:** Cidade Viva é um **simulador urbano**; decisões de ruas, bairros, impostos e empregos devem gerar consequências observáveis e testáveis, não apenas cosméticas.
+
+- [x] **Rede viária real**: distância por BFS ao longo de ruas (limite 24), caminhos válidos entre residências e estabelecimentos.
+- [x] **Empregos efetivos**: trabalhadores alocados em vagas alcançáveis, priorizando menor trajeto; desemprego e vagas podem coexistir em bairros desconectados.
+- [x] **Economia dependente de rede**: comércio/indústria só geram receita fiscal sobre empregos de fato ocupados; capacidade empresarial inacessível reduz demanda C/I.
+- [x] **Tráfego a partir de viagens reais**: contagem de trabalhadores por rua, carros visuais nos corredores usados; proxy de congestionamento e viagens longas reduz QUALIDADE.
+- [x] Cache do relatório econômico, com invalidação em obras, mudanças fiscais, avançar dia e restaurar; não recalcular trajetos a cada quadro.
+- [x] Indicadores no HUD/ECON para trabalho, deslocamento médio, trechos congestionados e bairros sem ligação viária ao emprego.
+- [x] 82.238 verificações adicionais, regressões Java e atlas 125 aprovados, compilação Android DEV concluída.
+- [x] Código integrado via [PR #38](https://github.com/pinelis141/CidadeViva/pull/38).
+- [ ] **QA Android físico:** [Issue #39](https://github.com/pinelis141/CidadeViva/issues/39).
+- [ ] Próximas fases: cobertura espacial de água/energia, serviços públicos, consequências ambientais, congestionamento dinâmico e transporte público.
+- [ ] Edifícios 2x2 devem consumir recursos e depender dos serviços antes de serem liberados.
+
+**Escopo atual:** cálculo agregado de deslocamento, não indivíduos ou veículos com IA própria. Mantém CVT3, três slots e assinatura Android DEV compatíveis.
+Referências: [DESIGN-SIMULACAO-0.5.md](DESIGN-SIMULACAO-0.5.md) e [QA-ANDROID-0.5.0-alpha1.md](QA-ANDROID-0.5.0-alpha1.md).
 ## 1. Convenções
 
 - **P0 — bloqueador:** impede estabilidade, controle ou perda de dados.
