@@ -113,6 +113,16 @@ A primeira revisão de arte e interface chegou à `main` por meio do [PR #18](ht
 - Documentos: [DESIGN-ECONOMIA.md](DESIGN-ECONOMIA.md) e [QA-ANDROID-0.3.0-alpha2.md](QA-ANDROID-0.3.0-alpha2.md).
 
 **Marco 0.3.0 continua aberto:** faltam progressão (CV-016), polimento de equilíbrio e validação real no celular.
+## Atualização — HUD 2.0 (0.3.0-alpha3-ui)
+
+- **PR #26 integrado:** [Redesenho de interface móvel](https://github.com/pinelis141/CidadeViva/pull/26).
+- Quatro cartões de status (caixa, moradores, dia, saldo). Três cartões de demanda R/C/I com barra 0–100 e classificação baixa/média/alta.
+- Barra de alertas (ruas, desempregados, vagas), seis ações principais, cinco ferramentas com custo e seleção legível.
+- Painel ECON e modal CIDADES redesenhados, preservando funcionalidades e áreas de toque; painel de inspeção de lotes com demanda, taxa, estrada, nível.
+- Geometria centralizada em `HudLayout` e renderização em Java/libGDX. Testes Java passaram, incluindo **2.511** verificações de toque/HUD/isometria/câmera.
+- **Sem alteração dos dados:** saves CVT3, três slots e valores econômicos permanecem compatíveis com 0.3.0-alpha2.
+- **QA físico pendente:** [issue #27](https://github.com/pinelis141/CidadeViva/issues/27), checar legibilidade real e interação.
+- Especificação: [UI-HUD-2.0.md](UI-HUD-2.0.md) e [QA-ANDROID-0.3.0-alpha3-ui.md](QA-ANDROID-0.3.0-alpha3-ui.md).
 ## 2. Auditoria do estado atual (v0.1.0)
 
 **Com código implementado:**
