@@ -25,6 +25,8 @@ public final class CityEconomy {
     public final int commutingResidents, disconnectedResidents, reachableJobs, commuteSteps, congestedRoads;
     public final CityMobility mobility;
     public final CityNeighborhoods neighborhoods;
+    public final CityServices services;
+    public final int serviceMaintenance;
     public final int residentialDemand;
     public final int commercialDemand;
     public final int industrialDemand;
@@ -45,7 +47,7 @@ public final class CityEconomy {
                         int taxResidential, int taxCommercial, int taxIndustrial,
                         int roadMaintenance, int zoneMaintenance, int unserved,
                         int rateR, int rateC, int rateI, int qualityOfLife,
-                        CityMobility mobility, CityNeighborhoods neighborhoods) {
+                        CityMobility mobility, CityNeighborhoods neighborhoods,CityServices services) {
         this.population=population;
         this.jobs=jobs;
         this.commercialJobs=commerce;
@@ -57,6 +59,7 @@ public final class CityEconomy {
         this.unemployed=population-employed;
         this.mobility=mobility;
         this.neighborhoods=neighborhoods;
+        this.services=services;this.serviceMaintenance=services.maintenance;
         this.commutingResidents=mobility.reachableResidents;
         this.disconnectedResidents=mobility.disconnectedResidents;
         this.reachableJobs=mobility.reachableJobCapacity;
@@ -72,7 +75,7 @@ public final class CityEconomy {
         this.grossRevenue=taxResidential+taxCommercial+taxIndustrial;
         this.roadMaintenance=roadMaintenance;
         this.zoneMaintenance=zoneMaintenance;
-        this.expenses=roadMaintenance+zoneMaintenance;
+        this.expenses=roadMaintenance+zoneMaintenance+serviceMaintenance;
         this.net=grossRevenue-expenses;
         this.unserved=unserved;
         this.residentialTaxRate=rateR;
@@ -152,7 +155,8 @@ public final class CityEconomy {
         }
         int activeJobs=activeCommerce+activeIndustry;
         CityMobility mobility=CityMobility.analyze(city);
-        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility);
+        CityServices services=CityServices.analyze(city);
+        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility,services);
         int employed=mobility.employed;
         int employedCommerce=mobility.commercialWorkers;
         int employedIndustry=mobility.industrialWorkers;
@@ -167,7 +171,7 @@ public final class CityEconomy {
         int iTax=taxYield(employedIndustry*2,rateI);
         int roadCost=roads*3;
         int zoneCost=zones*2+buildingMaintenance;
-        int net=rTax+cTax+iTax-roadCost-zoneCost;
+        int net=rTax+cTax+iTax-roadCost-zoneCost-services.maintenance;
         int employmentRatio=population==0?100:(int)((long)employed*100/population);
         int accessRatio=zones==0?100:100-(int)((long)unserved*100/zones);
         int commuteRatio=accessiblePopulation==0?100:
@@ -198,6 +202,6 @@ public final class CityEconomy {
             -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure-disconnectedPenalty,5,95);
         return new CityEconomy(population,commerce+industry,commerce,industry,
             accessiblePopulation,activeJobs,residential,commercial,industrial,
-            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods);
+            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods,services);
     }
 }

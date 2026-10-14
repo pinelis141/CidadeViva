@@ -1,3 +1,7 @@
+## 0.6.0-alpha1-servicos
+
+Parques, escolas e postos de saúde com capacidade, atendimento por ruas, manutenção e efeito na satisfação/evolução residencial. Menu SERV. e desenhos próprios no tabuleiro. Lê saves antigos e grava CVT4: não fazer downgrade após salvar. Veja [serviços e QA](SERVICOS-0.6-ALPHA1.md).
+
 ## 0.5.0-alpha3-auditoria
 
 Correções de câmera/rotação, gestos cancelados, pintura sobre HUD, cliques em modais, BACK/ajuda, feedback de deterioração, recuperação de saves interrompidos, diálogos em paisagem, reset de load, status de slots danificados, ordenação compatível com API23 e assets desktop. Testes do adaptador real adicionados ao CI. Veja [auditoria](AUDITORIA-0.5-ALPHA3.md).

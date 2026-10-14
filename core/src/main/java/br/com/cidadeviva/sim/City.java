@@ -113,6 +113,9 @@ public final class City {
 
     public int cost(TileType type) {
         switch (type) {
+            case PARK: return 350;
+            case SCHOOL: return 1100;
+            case CLINIC: return 1400;
             case ROAD: return 20;
             case RESIDENTIAL: return 80;
             case COMMERCIAL: return 110;
@@ -135,7 +138,7 @@ public final class City {
             cachedEconomy=null;
             return "Terreno liberado";
         }
-        if (type != TileType.ROAD && !type.isZone()) return "Construção inválida";
+        if (type != TileType.ROAD && !type.isZone() && !type.isService()) return "Construção inválida";
         if (existing.type == TileType.WATER) return "Não pode construir na água";
         if (existing.type == type) return "Já construído";
         if (existing.type != TileType.GRASS && existing.type != TileType.FOREST) return "Remova a estrutura antes";
@@ -151,7 +154,7 @@ public final class City {
         if (!inBounds(x,y)) return false;
         TileType current=tiles[x][y].type;
         if (type==TileType.GRASS) return current!=TileType.GRASS && current!=TileType.WATER;
-        if (type!=TileType.ROAD && !type.isZone()) return false;
+        if (type!=TileType.ROAD && !type.isZone() && !type.isService()) return false;
         return current==TileType.GRASS || current==TileType.FOREST;
     }
 
@@ -311,6 +314,7 @@ public final class City {
             }
             if(!accessible || demand<24 || t.level>=3)continue;
             if(t.type==TileType.RESIDENTIAL && (unhealthy ||
+                (t.level==2 && !report.services.readyForDensity(this,x,y)) ||
                 (t.level==1 && localQuality<45) || (t.level==2 && localQuality<65)))continue;
             if(t.level==0 && occupiedToday>=vacantLimit)continue;
             // Empty roadside lots develop quickly; established buildings gain
