@@ -8,6 +8,7 @@ import java.util.List;
 
 /** Deterministic, capacity-limited public services distributed through actual roads. */
 public final class CityServices {
+    public static final TileType[] BUILD_MENU={TileType.PARK,TileType.SCHOOL,TileType.CLINIC,TileType.POWER_PLANT,TileType.WATER_PUMP};
     public static final TileType[] TYPES={TileType.PARK,TileType.SCHOOL,TileType.CLINIC};
     private static final int H=City.HEIGHT,N=City.WIDTH*H;
     private final int[][] coverage=new int[3][N];
@@ -17,18 +18,18 @@ public final class CityServices {
         for(int i=0;i<TYPES.length;i++)if(TYPES[i]==type)return i;
         throw new IllegalArgumentException("Servico invalido");
     }
-    public static int capacity(TileType type) {return type==TileType.PARK?96:type==TileType.SCHOOL?180:144;}
+    public static int capacity(TileType type) {return type.isUtility()?CityUtilities.capacity(type):type==TileType.PARK?96:type==TileType.SCHOOL?180:144;}
     public static int range(TileType type) {return type==TileType.PARK?6:12;}
-    public static int upkeep(TileType type) {return type==TileType.PARK?8:type==TileType.SCHOOL?24:30;}
-    public static String name(TileType type) {return type==TileType.PARK?"PARQUE":type==TileType.SCHOOL?"ESCOLA":"POSTO DE SAUDE";}
-    private CityServices(City city) {
-        int cost=0,total=0,active=0;
+    public static int upkeep(TileType type) {return type.isUtility()?CityUtilities.upkeep(type):type==TileType.PARK?8:type==TileType.SCHOOL?24:30;}
+    public static String name(TileType type) {return type.isUtility()?CityUtilities.name(type):type==TileType.PARK?"PARQUE":type==TileType.SCHOOL?"ESCOLA":"POSTO DE SAUDE";}
+    private CityServices(City city,CityUtilities utilities) {
+        int cost=utilities.maintenance,total=0,active=0;
         int[] distance=new int[N],queue=new int[N];
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<H;y++) {
             TileType type=city.tile(x,y).type;
             if(!type.isService())continue;
             total++;cost+=upkeep(type);
-            if(city.money()==0 || !city.hasRoad(x,y))continue;
+            if(city.money()==0 || !city.hasRoad(x,y) || !utilities.hasSupply(x,y))continue;
             active++;
             Arrays.fill(distance,-1);int head=0,tail=0;
             for(int d=0;d<4;d++) {
@@ -73,7 +74,8 @@ public final class CityServices {
     private static int dx(int d) {return d==0?1:d==1?-1:0;}
     private static int dy(int d) {return d==2?1:d==3?-1:0;}
     private static boolean road(City c,int x,int y) {Tile t=c.tile(x,y);return t!=null && t.type==TileType.ROAD;}
-    public static CityServices analyze(City city) {return new CityServices(city);}
+    public static CityServices analyze(City city) {return new CityServices(city,CityUtilities.analyze(city));}
+    public static CityServices analyze(City city,CityUtilities utilities){return new CityServices(city,utilities);}
     public int coveredAt(TileType type,int x,int y) {return coverage[index(type)][x*H+y];}
     public int served(TileType type) {return served[index(type)];}
     public int bonusAt(City city,int x,int y) {

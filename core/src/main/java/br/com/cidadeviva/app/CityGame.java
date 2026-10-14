@@ -2,6 +2,7 @@ package br.com.cidadeviva.app;
 
 import br.com.cidadeviva.sim.City;
 import br.com.cidadeviva.sim.CityServices;
+import br.com.cidadeviva.sim.CityUtilities;
 import br.com.cidadeviva.render.ServiceArt;
 import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.CityEconomy;
@@ -248,7 +249,7 @@ public final class CityGame extends ApplicationAdapter {
                 Tile t=city.tile(x,y);
                 int id=PixelArtAtlas.tileSprite(t.type,city.roadMask(x,y),city.waterMask(x,y),x,y);
                 pixelArt.draw(batch,id,sx,sy);
-                if(t.type.isService())serviceArt.draw(batch,t.type,sx,sy);
+                if(t.type.isService() || t.type.isUtility())serviceArt.draw(batch,t.type,sx,sy);
                 if (t.type==TileType.FOREST) pixelArt.draw(batch,PixelArtAtlas.treeSprite(x,y),sx,sy);
                 if (t.type.isZone() && t.level>0)
                     pixelArt.draw(batch,PixelArtAtlas.buildingSprite(t.type,t.level,x,y),sx,sy);
@@ -613,7 +614,7 @@ public final class CityGame extends ApplicationAdapter {
         float tw=w/HudLayout.TOOLS;
         for(int i=0;i<HudLayout.TOOLS;i++) {
             float bx=i*tw+4*u,bw=tw-8*u;
-            boolean active=selected==tools[i] || (i==5 && selected.isService());
+            boolean active=selected==tools[i] || (i==5 && (selected.isService() || selected.isUtility()));
             card(bx,14*u,bw,(HudLayout.BOTTOM_HEIGHT-25)*u,
                 active?rgb(244,211,122):toolColors[i],active);
             drawToolIcon(i,bx+bw*0.5f,77*u,1.18f*u);
@@ -667,14 +668,17 @@ public final class CityGame extends ApplicationAdapter {
                 x+10*u,h-144*u,0.86f,muted,demandWidth-20*u);
         }
         int missing=eco.unserved;
+        boolean powerShort=eco.utilities.powerEnabled && eco.utilities.served(0)<eco.utilities.demand(0);
+        boolean waterShort=eco.utilities.waterEnabled && eco.utilities.served(1)<eco.utilities.demand(1);
         int nextGoal=CityMilestones.nextGoal(city.residents());
         label(missing>0?"! "+missing+" ZONAS SEM RUA":
+            powerShort?"! ENERGIA INSUFICIENTE":waterShort?"! AGUA INSUFICIENTE":
             eco.disconnectedResidents>0?"! "+eco.disconnectedResidents+" SEM LIGACAO AO TRABALHO":
             eco.congestedRoads>=3?"! "+eco.congestedRoads+" RUAS CONGESTIONADAS":
             eco.neighborhoods.pollutedResidents>0?"! "+eco.neighborhoods.pollutedResidents+" SOFREM POLUICAO":
             eco.neighborhoods.dissatisfiedResidents>0?"! "+eco.neighborhoods.dissatisfiedResidents+" INSATISFEITOS":
             nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
-            (missing>0 || eco.disconnectedResidents>0 || eco.congestedRoads>=3 ||
+            (missing>0 || powerShort || waterShort || eco.disconnectedResidents>0 || eco.congestedRoads>=3 ||
                 eco.neighborhoods.pollutedResidents>0 || eco.neighborhoods.dissatisfiedResidents>0)?amber:good,(w-32*u)*0.48f);
         String labor="QUAL "+eco.qualityOfLife+" | TRAB "+eco.employed+" | DES "+eco.unemployed;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
@@ -687,8 +691,8 @@ public final class CityGame extends ApplicationAdapter {
         }
         for(int i=0;i<HudLayout.TOOLS;i++) {
             float x=i*tw;
-            centered(i==5 && selected.isService()?(selected==TileType.CLINIC?"SAUDE":CityServices.name(selected)):toolNames[i],x,tw,46*u,1.30f,white);
-            centered("R$ "+city.cost(i==5 && selected.isService()?selected:tools[i]),x,tw,26*u,0.96f,muted);
+            centered(i==5 && (selected.isService() || selected.isUtility())?(selected==TileType.POWER_PLANT?"ENERGIA":selected==TileType.WATER_PUMP?"AGUA":selected==TileType.CLINIC?"SAUDE":CityServices.name(selected)):toolNames[i],x,tw,46*u,1.30f,white);
+            centered("R$ "+city.cost(i==5 && (selected.isService() || selected.isUtility())?selected:tools[i]),x,tw,26*u,0.96f,muted);
         }
         if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
             !slotsVisible && !economyVisible && !servicesVisible)drawInspector(u,eco);
@@ -746,7 +750,7 @@ public final class CityGame extends ApplicationAdapter {
         String type=t.type==TileType.RESIDENTIAL?"RESIDENCIAL":
             t.type==TileType.COMMERCIAL?"COMERCIAL":
             t.type==TileType.INDUSTRIAL?"INDUSTRIAL":
-            t.type.isService()?CityServices.name(t.type):
+            (t.type.isService() || t.type.isUtility())?CityServices.name(t.type):
             t.type==TileType.ROAD?"ESTRADA":
             t.type==TileType.WATER?"AGUA":
             t.type==TileType.FOREST?"FLORESTA":"TERRENO LIVRE";
@@ -763,10 +767,13 @@ public final class CityGame extends ApplicationAdapter {
             if(low>0)reason+="  |  "+low+" DIAS FRACOS";
             label(reason,21*u,base+19*u,0.96f,
                 !city.hasRoad(hoverX,hoverY)?rgb(243,178,108):white,w-48*u);
+        } else if(t.type.isUtility()) {
+            label("CAP "+CityUtilities.capacity(t.type)+" | R$ "+CityUtilities.upkeep(t.type)+"/dia | REDE PELAS RUAS",21*u,base+45*u,1.04f,muted,w-88*u);
+            label(report.utilities.operates(t.type,hoverX,hoverY)?"EM OPERACAO":"INATIVO: VERIFIQUE RUA E ENERGIA",21*u,base+19*u,0.96f,white,w-48*u);
         } else if(t.type.isService()) {
             label("R$ "+CityServices.upkeep(t.type)+"/dia | CAP "+CityServices.capacity(t.type)+" | ALCANCE "+CityServices.range(t.type),
                 21*u,base+45*u,1.04f,muted,w-88*u);
-            label(!city.hasRoad(hoverX,hoverY)?"SEM RUA: SERVICO INATIVO":city.money()==0?"SEM CAIXA: SERVICO INATIVO":"EM OPERACAO | ATENDE POR RUAS",21*u,base+19*u,0.96f,white,w-48*u);
+            label(!city.hasRoad(hoverX,hoverY)?"SEM RUA: SERVICO INATIVO":city.money()==0?"SEM CAIXA: SERVICO INATIVO":!report.utilities.hasSupply(hoverX,hoverY)?"SEM ENERGIA / AGUA":"EM OPERACAO | ATENDE POR RUAS",21*u,base+19*u,0.96f,white,w-48*u);
         } else label("POSICAO "+hoverX+","+hoverY+"  |  TOQUE EM X PARA FECHAR",
             21*u,base+30*u,1.06f,muted,w-90*u);
         centered("X",w-59*u,44*u,base+54*u,1.25f,white);
@@ -816,7 +823,7 @@ public final class CityGame extends ApplicationAdapter {
         float x=econX(u),y=econY(u),ww=econW(u);
         Color white=rgb(236,246,239),sub=rgb(168,198,205);
         label("ECONOMIA",x+21*u,y+520*u,1.62f,white,ww-42*u);
-        label("Taxas de 5% a 20%: excesso reduz arrecadacao",
+        label(utilitySummary(report),
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
         label("QUAL "+report.qualityOfLife+" | EMP "+report.employed+"/"+report.population+
             " | SAT "+report.neighborhoods.averageSatisfaction+" | POL "+report.neighborhoods.pollutedResidents,x+21*u,y+465*u,0.95f,sub,ww-42*u);
@@ -842,7 +849,7 @@ public final class CityGame extends ApplicationAdapter {
         label("DESPESAS",x+22*u,y+118*u,1.12f,rgb(244,183,113),ww-44*u);
         label("R$ "+report.expenses+" / dia",x+ww*0.63f,y+118*u,
             1.18f,white,ww*0.34f);
-        label("Ruas "+report.roadMaintenance+" | Predios "+report.zoneMaintenance+" | Servicos "+report.serviceMaintenance,
+        label("Ruas "+report.roadMaintenance+" | Predios "+report.zoneMaintenance+" | Serv./Redes "+report.serviceMaintenance,
             x+22*u,y+97*u,0.94f,sub,ww-44*u);
         label("SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
         label((report.net>=0?"+":"")+"R$ "+report.net,x+ww*0.55f,y+70*u,1.22f,
@@ -986,33 +993,38 @@ public final class CityGame extends ApplicationAdapter {
         }
     }
 
+    private String utilitySummary(CityEconomy report) {
+        CityUtilities u=report.utilities;
+        return (u.powerEnabled?"ENERGIA "+u.served(0)+"/"+u.demand(0)+" (CAP "+u.capacity(0)+")":"ENERGIA: PLANEJAMENTO")+
+            " | "+(u.waterEnabled?"AGUA "+u.served(1)+"/"+u.demand(1)+" (CAP "+u.capacity(1)+")":"AGUA: PLANEJAMENTO");
+    }
     private void openServices() {
         resetGestures();servicesVisible=true;helpVisible=false;slotsVisible=false;economyVisible=false;inspectorVisible=false;
     }
     private void drawServices(float u,boolean text) {
-        float x=slotsX(u),y=h/2f-200*u,ww=slotsW(u);
+        float x=slotsX(u),y=h/2f-280*u,ww=slotsW(u);
         if(!text) {
             shapes.setColor(0.01f,0.03f,0.04f,0.91f);shapes.rect(0,0,w,h);
-            card(x,y,ww,400*u,rgb(126,205,171),false);
-            for(int i=0;i<3;i++)card(x+12*u,y+(240-i*90)*u,ww-24*u,72*u,rgb(126,205,171),false);
+            card(x,y,ww,560*u,rgb(126,205,171),false);
+            for(int i=0;i<CityServices.BUILD_MENU.length;i++)card(x+12*u,y+(400-i*84)*u,ww-24*u,72*u,rgb(126,205,171),false);
             card(x+12*u,y+12*u,ww-24*u,36*u,rgb(180,190,190),false);
         } else {
-            label("SERVICOS PUBLICOS",x+22*u,y+365*u,1.45f,rgb(232,243,237),ww-44*u);
-            label("Escolha e toque no mapa. Atendimento exige ruas.",x+22*u,y+337*u,0.96f,rgb(170,195,197),ww-44*u);
-            for(int i=0;i<3;i++) {
-                TileType type=CityServices.TYPES[i];float row=y+(240-i*90)*u;
+            label("SERVICOS E REDES",x+22*u,y+525*u,1.45f,rgb(232,243,237),ww-44*u);
+            label(utilitySummary(city.economy()),x+22*u,y+497*u,0.96f,rgb(170,195,197),ww-44*u);
+            for(int i=0;i<CityServices.BUILD_MENU.length;i++) {
+                TileType type=CityServices.BUILD_MENU[i];float row=y+(400-i*84)*u;
                 label(CityServices.name(type)+"  R$ "+city.cost(type),x+26*u,row+51*u,1.2f,rgb(232,243,237),ww-52*u);
-                label("R$ "+CityServices.upkeep(type)+"/dia | "+CityServices.capacity(type)+" moradores | "+CityServices.range(type)+" ruas",x+26*u,row+24*u,0.98f,rgb(170,195,197),ww-52*u);
+                label("R$ "+CityServices.upkeep(type)+"/dia | "+CityServices.capacity(type)+(type.isUtility()?" unidades | REDE VIARIA":" moradores | "+CityServices.range(type)+" ruas"),x+26*u,row+24*u,0.98f,rgb(170,195,197),ww-52*u);
             }
             centered("VOLTAR",x+12*u,ww-24*u,y+37*u,1.08f,rgb(232,243,237));
         }
     }
     private void servicesTap(int sx,int sy) {
-        float u=uiScale,x=slotsX(u),y=h/2f-200*u,ww=slotsW(u),py=h-sy;
-        if(sx<x || sx>x+ww || py<y || py>y+400*u){servicesVisible=false;return;}
+        float u=uiScale,x=slotsX(u),y=h/2f-280*u,ww=slotsW(u),py=h-sy;
+        if(sx<x || sx>x+ww || py<y || py>y+560*u){servicesVisible=false;return;}
         if(py<y+48*u){servicesVisible=false;return;}
-        for(int i=0;i<3;i++)if(py>=y+(240-i*90)*u && py<=y+(312-i*90)*u) {
-            selected=CityServices.TYPES[i];servicesVisible=false;paintMode=false;
+        for(int i=0;i<CityServices.BUILD_MENU.length;i++)if(py>=y+(400-i*84)*u && py<=y+(472-i*84)*u) {
+            selected=CityServices.BUILD_MENU[i];servicesVisible=false;paintMode=false;
             message("Construir "+CityServices.name(selected)+": R$ "+city.cost(selected));return;
         }
     }

@@ -15,6 +15,11 @@ public final class City {
     private int money = INITIAL_MONEY;
     private int day = 1;
     private int lastIncome = 0;
+    private int utilityFlags=0;
+    public boolean powerEnabled(){return (utilityFlags&1)!=0;}
+    public boolean waterEnabled(){return (utilityFlags&2)!=0;}
+    public int utilityFlags(){return utilityFlags;}
+    private void activateUtility(TileType type){if(type==TileType.POWER_PLANT)utilityFlags|=1;if(type==TileType.WATER_PUMP)utilityFlags|=2;}
     private CityEconomy cachedEconomy;
     // Per-city settings, persisted in CVT3. Existing CVT1/CVT2 cities default to 10%.
     private final int[] taxRates = {10, 10, 10};
@@ -113,6 +118,8 @@ public final class City {
 
     public int cost(TileType type) {
         switch (type) {
+            case POWER_PLANT: return 2600;
+            case WATER_PUMP: return 1800;
             case PARK: return 350;
             case SCHOOL: return 1100;
             case CLINIC: return 1400;
@@ -138,13 +145,14 @@ public final class City {
             cachedEconomy=null;
             return "Terreno liberado";
         }
-        if (type != TileType.ROAD && !type.isZone() && !type.isService()) return "Construção inválida";
+        if (type != TileType.ROAD && !type.isZone() && !type.isService() && !type.isUtility()) return "Construção inválida";
         if (existing.type == TileType.WATER) return "Não pode construir na água";
         if (existing.type == type) return "Já construído";
         if (existing.type != TileType.GRASS && existing.type != TileType.FOREST) return "Remova a estrutura antes";
         if (money < cost(type)) return "Dinheiro insuficiente";
         money -= cost(type);
         tiles[x][y] = new Tile(type);
+        activateUtility(type);
         cachedEconomy=null;
         return "Construído";
     }
@@ -154,7 +162,7 @@ public final class City {
         if (!inBounds(x,y)) return false;
         TileType current=tiles[x][y].type;
         if (type==TileType.GRASS) return current!=TileType.GRASS && current!=TileType.WATER;
-        if (type!=TileType.ROAD && !type.isZone() && !type.isService()) return false;
+        if (type!=TileType.ROAD && !type.isZone() && !type.isService() && !type.isUtility()) return false;
         return current==TileType.GRASS || current==TileType.FOREST;
     }
 
@@ -199,6 +207,7 @@ public final class City {
         for (BuildStroke.Cell cell:new LinkedHashSet<>(targets)) {
             if (canBuild(cell.x,cell.y,type)) tiles[cell.x][cell.y]=new Tile(type);
         }
+        activateUtility(type);
         money-=estimate.cost;
         cachedEconomy=null;
         return estimate;
@@ -313,6 +322,7 @@ public final class City {
                 continue;
             }
             if(!accessible || demand<24 || t.level>=3)continue;
+            if(t.level>0 && !report.utilities.hasSupply(x,y))continue;
             if(t.type==TileType.RESIDENTIAL && (unhealthy ||
                 (t.level==2 && !report.services.readyForDensity(this,x,y)) ||
                 (t.level==1 && localQuality<45) || (t.level==2 && localQuality<65)))continue;
@@ -347,6 +357,10 @@ public final class City {
         restore(incoming,restoredMoney,restoredDay,restoredIncome,new int[]{10,10,10},new int[]{0,0,0});
     }
     void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays) {
+        restore(incoming,restoredMoney,restoredDay,restoredIncome,rates,weakDays,0);
+    }
+    void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays,int flags) {
+        utilityFlags=flags;
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];
         recentEvents.clear();

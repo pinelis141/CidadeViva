@@ -100,12 +100,16 @@ public final class CityControlsTest {
         zoom=camera.zoom;input.scrolled(0,1);
         check(camera.zoom==zoom,"service dialog blocks camera wheel");
         // 730x970, scale 1: school row centered at world UI y=485-200+150+36.
-        input.touchDown(365,499,0,0);input.touchUp(365,499,0,0);
+        input.touchDown(365,413,0,0);input.touchUp(365,413,0,0);
         check(!(boolean)get(game,"servicesVisible") && get(game,"selected")==br.com.cidadeviva.sim.TileType.SCHOOL,
             "school selection updates active build tool");
         check(!(boolean)get(game,"paintMode"),"service choice starts with single-lot placement");
         input.keyDown(Input.Keys.NUM_6);input.keyDown(Input.Keys.BACK);
         check(!(boolean)get(game,"servicesVisible"),"back closes service dialog");
+        input.keyDown(Input.Keys.NUM_6);input.touchDown(365,581,0,0);input.touchUp(365,581,0,0);
+        check(get(game,"selected")==br.com.cidadeviva.sim.TileType.POWER_PLANT,"generator can be selected");
+        input.keyDown(Input.Keys.NUM_6);input.touchDown(365,665,0,0);input.touchUp(365,665,0,0);
+        check(get(game,"selected")==br.com.cidadeviva.sim.TileType.WATER_PUMP,"water source can be selected");
         font.dispose();
         System.out.println("OK: "+checks+" actual controls and camera/lifecycle regressions.");
     }
