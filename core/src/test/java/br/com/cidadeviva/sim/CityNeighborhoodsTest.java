@@ -9,7 +9,7 @@ public final class CityNeighborhoodsTest {
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++)map[x][y]=new Tile(TileType.GRASS);
         for(int x=10;x<=20;x++)map[x][10]=new Tile(TileType.ROAD);
         map[10][9]=new Tile(TileType.RESIDENTIAL,2);
-        map[11][11]=new Tile(TileType.INDUSTRIAL,polluted?3:0);
+        map[11][9]=new Tile(TileType.INDUSTRIAL,polluted?3:0);
         map[20][11]=new Tile(TileType.COMMERCIAL,3);
         if(!connectedShop)map[16][10]=new Tile(TileType.GRASS);
         if(green)for(int x=8;x<=12;x++)map[x][8]=new Tile(TileType.FOREST);
