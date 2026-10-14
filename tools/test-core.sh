@@ -31,3 +31,4 @@ java -cp "$DIR" br.com.cidadeviva.sim.CityMobilityTest
 
 java -cp "$DIR" br.com.cidadeviva.sim.CityNeighborhoodsTest
 java -cp "$DIR" br.com.cidadeviva.sim.CityServicesTest
+java -cp "$DIR" br.com.cidadeviva.sim.CityUtilitiesTest

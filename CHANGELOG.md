@@ -1,3 +1,7 @@
+## 0.7.0-alpha1-redes
+
+Energia e água distribuídas pelas ruas, com fontes finitas, consumo, manutenção, alertas e efeitos em empregos, serviços e evolução. Cada rede é ativada pela primeira fonte construída. Lê CVT1–CVT4 e grava CVT5; não fazer downgrade após salvar. Veja [redes e QA](REDES-0.7-ALPHA1.md).
+
 ## 0.6.0-alpha1-servicos
 
 Parques, escolas e postos de saúde com capacidade, atendimento por ruas, manutenção e efeito na satisfação/evolução residencial. Menu SERV. e desenhos próprios no tabuleiro. Lê saves antigos e grava CVT4: não fazer downgrade após salvar. Veja [serviços e QA](SERVICOS-0.6-ALPHA1.md).

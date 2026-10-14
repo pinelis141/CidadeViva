@@ -69,7 +69,8 @@ public final class CityMobility {
         }
         return n;
     }
-    public static CityMobility analyze(City city) {
+    public static CityMobility analyze(City city) {return analyze(city,CityUtilities.analyze(city));}
+    public static CityMobility analyze(City city,CityUtilities utilities) {
         List<Building> homes=new ArrayList<>(),jobs=new ArrayList<>();
         int accessible=0,jobCapacity=0;
         for(int x=0;x<W;x++)for(int y=0;y<H;y++) {
@@ -80,6 +81,7 @@ public final class CityMobility {
                 accessible+=people;
                 homes.add(new Building(x,y,tile.type,people));
             } else {
+                if(!utilities.hasSupply(x,y))continue;
                 int positions=tile.level*(tile.type==TileType.COMMERCIAL?10:18);
                 jobCapacity+=positions;
                 jobs.add(new Building(x,y,tile.type,positions));

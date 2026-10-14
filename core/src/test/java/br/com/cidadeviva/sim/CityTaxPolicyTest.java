@@ -50,7 +50,7 @@ public final class CityTaxPolicyTest {
         ok(changed.commercialDemand>=base.commercialDemand,"lower tax attracts commerce");
         ok(changed.net==changed.grossRevenue-changed.expenses,"consistent budget");
         byte[] v3=write(city);
-        ok(new DataInputStream(new ByteArrayInputStream(v3)).readInt()==0x43565434,"CVT4 signature");
+        ok(new DataInputStream(new ByteArrayInputStream(v3)).readInt()==0x43565435,"CVT5 signature");
         City restored=read(v3);
         ok(restored.taxRate(TileType.RESIDENTIAL)==20,"residential tax roundtrips");
         ok(restored.taxRate(TileType.COMMERCIAL)==5,"commercial tax roundtrips");

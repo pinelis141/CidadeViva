@@ -47,10 +47,10 @@ public final class CityServicesTest {
         City loaded=CityPersistence.load(new ByteArrayInputStream(save(overlap)));
         ok(loaded.tile(13,11).type==TileType.SCHOOL && loaded.economy().serviceMaintenance==overlap.economy().serviceMaintenance,"CVT4 retains service buildings and costs");
         for(int d=0;d<30;d++){overlap.nextDay();loaded.nextDay();ok(overlap.money()==loaded.money() && overlap.residents()==loaded.residents(),"services replay identically after save");}
-        byte[] old=save(fixture(false,50000));old[3]='3';crc(old);
+        byte[] full=save(fixture(false,50000));byte[] old=new byte[full.length-1];System.arraycopy(full,0,old,0,full.length-5);old[3]='3';crc(old);
         City migrated=CityPersistence.load(new ByteArrayInputStream(old));
         ok(migrated.residents()==fixture(false,50000).residents(),"CVT3 migrates without changing city");
-        byte[] invalid=save(fixture(true,50000));invalid[3]='3';crc(invalid);
+        byte[] fullInvalid=save(fixture(true,50000));byte[] invalid=new byte[fullInvalid.length-1];System.arraycopy(fullInvalid,0,invalid,0,fullInvalid.length-5);invalid[3]='3';crc(invalid);
         try{CityPersistence.load(new ByteArrayInputStream(invalid));throw new AssertionError("service smuggled into legacy CVT3");}catch(IOException expected){checks++;}
         City budget=new City();int money=budget.money();
         ok(budget.build(20,20,TileType.PARK).equals("Construído"),"park can be built");

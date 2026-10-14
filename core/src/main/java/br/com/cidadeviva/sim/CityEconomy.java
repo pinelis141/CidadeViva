@@ -26,6 +26,7 @@ public final class CityEconomy {
     public final CityMobility mobility;
     public final CityNeighborhoods neighborhoods;
     public final CityServices services;
+    public final CityUtilities utilities;
     public final int serviceMaintenance;
     public final int residentialDemand;
     public final int commercialDemand;
@@ -47,7 +48,7 @@ public final class CityEconomy {
                         int taxResidential, int taxCommercial, int taxIndustrial,
                         int roadMaintenance, int zoneMaintenance, int unserved,
                         int rateR, int rateC, int rateI, int qualityOfLife,
-                        CityMobility mobility, CityNeighborhoods neighborhoods,CityServices services) {
+                        CityMobility mobility, CityNeighborhoods neighborhoods,CityServices services,CityUtilities utilities) {
         this.population=population;
         this.jobs=jobs;
         this.commercialJobs=commerce;
@@ -59,7 +60,7 @@ public final class CityEconomy {
         this.unemployed=population-employed;
         this.mobility=mobility;
         this.neighborhoods=neighborhoods;
-        this.services=services;this.serviceMaintenance=services.maintenance;
+        this.utilities=utilities;this.services=services;this.serviceMaintenance=services.maintenance;
         this.commutingResidents=mobility.reachableResidents;
         this.disconnectedResidents=mobility.disconnectedResidents;
         this.reachableJobs=mobility.reachableJobCapacity;
@@ -120,6 +121,7 @@ public final class CityEconomy {
     }
 
     public static CityEconomy analyze(City city) {
+        CityUtilities utilities=CityUtilities.analyze(city);
         int population=0, commerce=0, industry=0;
         int accessiblePopulation=0, activeCommerce=0, activeIndustry=0;
         int roads=0, zones=0, emptyR=0,emptyC=0,emptyI=0, unserved=0;
@@ -140,13 +142,13 @@ public final class CityEconomy {
                     break;
                 case COMMERCIAL:
                     commerce+=t.level*10;
-                    if(access)activeCommerce+=t.level*10;
+                    if(access && utilities.hasSupply(x,y))activeCommerce+=t.level*10;
                     if(t.level==0&&access)emptyC++;
                     buildingMaintenance+=6*t.level*t.level;
                     break;
                 case INDUSTRIAL:
                     industry+=t.level*18;
-                    if(access)activeIndustry+=t.level*18;
+                    if(access && utilities.hasSupply(x,y))activeIndustry+=t.level*18;
                     if(t.level==0&&access)emptyI++;
                     buildingMaintenance+=9*t.level*t.level;
                     break;
@@ -154,9 +156,9 @@ public final class CityEconomy {
             }
         }
         int activeJobs=activeCommerce+activeIndustry;
-        CityMobility mobility=CityMobility.analyze(city);
-        CityServices services=CityServices.analyze(city);
-        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility,services);
+        CityMobility mobility=CityMobility.analyze(city,utilities);
+        CityServices services=CityServices.analyze(city,utilities);
+        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility,services,utilities);
         int employed=mobility.employed;
         int employedCommerce=mobility.commercialWorkers;
         int employedIndustry=mobility.industrialWorkers;
@@ -202,6 +204,6 @@ public final class CityEconomy {
             -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure-disconnectedPenalty,5,95);
         return new CityEconomy(population,commerce+industry,commerce,industry,
             accessiblePopulation,activeJobs,residential,commercial,industrial,
-            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods,services);
+            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods,services,utilities);
     }
 }

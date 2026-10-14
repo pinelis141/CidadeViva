@@ -9,11 +9,11 @@ public final class CityNeighborhoods {
     private final boolean[] shops=new boolean[N];
     public final int averageSatisfaction, pollutedResidents, dissatisfiedResidents;
 
-    private CityNeighborhoods(City city,CityMobility mobility,CityServices services) {
+    private CityNeighborhoods(City city,CityMobility mobility,CityServices services,CityUtilities utilities) {
         // Bounded source influence: industry level matters; vacant zones do not emit.
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<H;y++) {
             Tile t=city.tile(x,y);
-            if(t.type==TileType.INDUSTRIAL && t.level>0)spread(pollution,x,y,6,t.level*3);
+            if(t.type==TileType.INDUSTRIAL && t.level>0 && utilities.hasSupply(x,y))spread(pollution,x,y,6,t.level*3);
             if(t.type==TileType.FOREST)spread(greenery,x,y,3,1);
         }
         int people=0, unhappy=0, polluted=0;
@@ -51,7 +51,7 @@ public final class CityNeighborhoods {
             }
             int employment=t.level==0?50:mobility.employedAt(x,y)*100/(t.level*12);
             int score=city.hasRoad(x,y)?45+employment*30/100+(shops[id]?10:0)+greenery[id]
-                +services.bonusAt(city,x,y)-pollution[id]/2-Math.min(15,Math.max(0,traffic-60)/8)
+                +services.bonusAt(city,x,y)-utilities.homePenalty(x,y)-pollution[id]/2-Math.min(15,Math.max(0,traffic-60)/8)
                 -Math.max(0,city.taxRate(TileType.RESIDENTIAL)-10)*2:15;
             satisfaction[id]=Math.max(5,Math.min(95,score));
             int residents=t.level*12;
@@ -69,8 +69,8 @@ public final class CityNeighborhoods {
                 if(distance<=radius)values[nx*H+ny]+=(radius+1-distance)*strength;
             }
     }
-    public static CityNeighborhoods analyze(City city,CityMobility mobility,CityServices services) {
-        return new CityNeighborhoods(city,mobility,services);
+    public static CityNeighborhoods analyze(City city,CityMobility mobility,CityServices services,CityUtilities utilities) {
+        return new CityNeighborhoods(city,mobility,services,utilities);
     }
     public int pollutionAt(int x,int y) {return pollution[x*H+y];}
     public int satisfactionAt(int x,int y) {return satisfaction[x*H+y];}
@@ -80,6 +80,9 @@ public final class CityNeighborhoods {
         Tile t=city.tile(x,y);
         if(!city.hasRoad(x,y))return "SEM RUA ADJACENTE";
         if(t.type!=TileType.RESIDENTIAL)return city.economy().mainConstraint(t.type,true);
+        CityUtilities utilities=city.economy().utilities;
+        if(utilities.powerEnabled && utilities.suppliedAt(0,x,y)<CityUtilities.need(t,0))return "ENERGIA INSUFICIENTE";
+        if(utilities.waterEnabled && utilities.suppliedAt(1,x,y)<CityUtilities.need(t,1))return "AGUA INSUFICIENTE";
         if(pollutionAt(x,y)>=40)return "POLUICAO INDUSTRIAL";
         if(t.level>0 && mobility.employedAt(x,y)<t.level*12)return "FALTAM EMPREGOS ACESSIVEIS";
         if(!commerceAt(x,y))return "FALTA COMERCIO CONECTADO";
