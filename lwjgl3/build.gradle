@@ -8,3 +8,6 @@ dependencies {
 }
 
 tasks.named("run").configure { workingDir = project(":android").file("assets") }
+
+// Pack atlas assets for installed/distributed desktop builds as well as gradle run.
+sourceSets.main.resources.srcDir project(':android').file('assets')

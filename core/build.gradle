@@ -3,3 +3,11 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 dependencies {
     api "com.badlogicgames.gdx:gdx:${gdxVersion}"
 }
+
+// Exercise real input/lifecycle code without opening a graphical window.
+dependencies { testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-desktop" }
+tasks.register('auditControls', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'br.com.cidadeviva.app.CityControlsTest'
+}

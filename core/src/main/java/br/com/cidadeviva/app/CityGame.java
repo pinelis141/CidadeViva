@@ -83,10 +83,11 @@ public final class CityGame extends ApplicationAdapter {
 
     private static final class GrowthPulse {
         final int x,y,level;
+        final boolean growth;
         final TileType type;
         float age;
         GrowthPulse(City.GrowthEvent event) {
-            x=event.x;y=event.y;level=event.toLevel;type=event.type;
+            x=event.x;y=event.y;level=event.toLevel;type=event.type;growth=event.isGrowth();
         }
     }
     private String toast = "MODO MOVER: arraste para navegar. Toque para construir.";
@@ -140,6 +141,7 @@ public final class CityGame extends ApplicationAdapter {
         camera.zoom = 0.95f;
         clampCamera();
         Gdx.input.setInputProcessor(new Controls());
+        Gdx.input.setCatchKey(Input.Keys.BACK,true);
         try {
             CitySlots.Opened opened=saves.openActive();
             city=opened.city;
@@ -159,7 +161,11 @@ public final class CityGame extends ApplicationAdapter {
     @Override public void resize(int width,int height) {
         w = Math.max(1,width); h = Math.max(1,height);
         uiScale = HudLayout.scale(w,h);
+        float oldX=camera.position.x,oldY=camera.position.y,oldZoom=camera.zoom;
         camera.setToOrtho(false, w, h);
+        camera.position.set(oldX,oldY,0);
+        camera.zoom=oldZoom;
+        resetGestures();
         clampCamera();
         uiProjection.setToOrtho2D(0,0,w,h);
         font.getData().setScale(1.15f * uiScale);
@@ -292,7 +298,7 @@ public final class CityGame extends ApplicationAdapter {
             if(!visibleOnCamera(sx,sy))continue;
             float progress=pulse.age/2.35f;
             float radius=17+progress*21;
-            if(pulse.level>0)shapes.setColor(0.45f,1f,0.66f,(1f-progress)*0.62f);
+            if(pulse.growth)shapes.setColor(0.45f,1f,0.66f,(1f-progress)*0.62f);
             else shapes.setColor(1f,0.49f,0.33f,(1f-progress)*0.58f);
             thinDiamond(sx,sy,radius,radius*0.5f);
             shapes.rect(sx-1.6f,sy+15f+progress*22f,3.2f,3.2f);
@@ -308,11 +314,11 @@ public final class CityGame extends ApplicationAdapter {
             if(projectedGrowth.x<20*u || projectedGrowth.x>w-70*u ||
                 projectedGrowth.y<HudLayout.BOTTOM_HEIGHT*u+16*u ||
                 projectedGrowth.y>h-HudLayout.TOP_HEIGHT*u-8*u)continue;
-            String value=pulse.level==0?"ABANDONO":
+            String value=!pulse.growth?(pulse.level==0?"ABANDONO":"DETERIORACAO"):
                 pulse.type==TileType.RESIDENTIAL?"+ CASAS":
                 pulse.type==TileType.COMMERCIAL?"+ LOJAS":"+ INDUSTRIA";
             label(value,projectedGrowth.x,projectedGrowth.y,1.03f,
-                pulse.level==0?rgb(254,150,115):rgb(163,248,174),90*u);
+                !pulse.growth?rgb(254,150,115):rgb(163,248,174),90*u);
         }
     }
 
@@ -860,6 +866,7 @@ public final class CityGame extends ApplicationAdapter {
         for(int i=0;i<CitySlots.COUNT;i++)slotInfo[i]=saves.inspect(i+1);
     }
     private void openSlots() {
+        resetGestures();
         economyVisible=false;
         inspectorVisible=false;
         if (!savesReady) simulationPaused=true;
@@ -897,7 +904,7 @@ public final class CityGame extends ApplicationAdapter {
             if(info==null)continue;
             float sy=slotRowY(i,u);
             label("CIDADE "+info.slot,x+28*u,sy+53*u,1.30f,white,ww-157*u);
-            label(info.active?"EM USO":info.corrupt?"PROTEGIDA":
+            label(info.corrupt?"PROTEGIDA":info.active?"EM USO":
                 info.empty?"NOVA":"SALVA",x+ww-120*u,sy+53*u,1.03f,
                 info.corrupt?rgb(246,140,124):info.active?rgb(247,208,115):rgb(137,214,193),105*u);
             String description=info.corrupt?"Arquivo com erro. Nenhum dado sera apagado.":
@@ -910,7 +917,7 @@ public final class CityGame extends ApplicationAdapter {
         String action="ABRIR / CRIAR";
         if(selectedSlot>=1 && selectedSlot<=CitySlots.COUNT && slotInfo[selectedSlot-1]!=null) {
             CitySlots.SlotInfo chosen=slotInfo[selectedSlot-1];
-            action=chosen.active?"CONTINUAR":chosen.corrupt?"PROTEGIDA":
+            action=chosen.corrupt?"PROTEGIDA":chosen.active?"CONTINUAR":
                 chosen.empty?"CRIAR NOVA":"ABRIR CIDADE";
         }
         centered(action,x+12*u,(ww-33*u)*0.62f,y+43*u,1.12f,white);
@@ -987,6 +994,9 @@ public final class CityGame extends ApplicationAdapter {
                 return;
             }
             city = result.city;
+            simClock=0;activityClock=0;
+            inspectorVisible=false;hoverX=-1;hoverY=-1;
+            resetGestures();
             refreshActivity();
             growthPulses.clear();
             milestoneClock=0f;
@@ -999,7 +1009,7 @@ public final class CityGame extends ApplicationAdapter {
             Gdx.app.error("CidadeViva","Erro ao carregar",e);
         }
     }
-    @Override public void pause() { if(savesReady)save(false); }
+    @Override public void pause() { resetGestures(); if(savesReady)save(false); }
 
     @Override public void dispose() {
         if(savesReady)save(false);
@@ -1081,12 +1091,15 @@ public final class CityGame extends ApplicationAdapter {
         startX=lastStrokeX=cell[0];
         startY=lastStrokeY=cell[1];
         if (city.inBounds(startX,startY)) brushCells.add(new BuildStroke.Cell(startX,startY));
+        else suppressTap=true;
         brushGesture=false;
     }
 
     private void strokeTo(int screenX,int screenY) {
         int[] cell=cellAt(screenX,screenY);
-        if (!city.inBounds(cell[0],cell[1])) return;
+        if (HudLayout.isHud(screenX,screenY,w,h,uiScale) ||
+            (inspectorVisible && HudLayout.inspectorAt(screenX,screenY,w,h,uiScale)) ||
+            !city.inBounds(cell[0],cell[1])) return;
         if (selected==TileType.ROAD) {
             // Union of consecutive segments avoids missing cells at low frame rates.
             brushCells.addAll(BuildStroke.line(lastStrokeX,lastStrokeY,cell[0],cell[1]));
@@ -1098,6 +1111,11 @@ public final class CityGame extends ApplicationAdapter {
     }
 
     private void finishStroke(int screenX,int screenY) {
+        if(HudLayout.isHud(screenX,screenY,w,h,uiScale) ||
+           (inspectorVisible && HudLayout.inspectorAt(screenX,screenY,w,h,uiScale))) {
+            message("Construcao cancelada: solte sobre o mapa");
+            brushCells.clear();brushGesture=false;return;
+        }
         strokeTo(screenX,screenY);
         City.BuildResult result=city.buildArea(new ArrayList<>(brushCells),selected);
         if(result.built>0 && !result.insufficientFunds)refreshActivity();
@@ -1109,6 +1127,18 @@ public final class CityGame extends ApplicationAdapter {
         brushGesture=false;
         hoverX=-1;hoverY=-1;
         inspectorVisible=false;
+    }
+
+    private void resetGestures() {
+        down[0]=down[1]=false;
+        moving=false;startedOnUi=false;pinchActive=false;secondPointerOnHud=false;
+        suppressTap=false;pendingInspector=false;pendingAction=pendingTool=pendingQuickAction=-1;
+        brushGesture=false;brushCells.clear();dragTravel=0;
+    }
+
+    private void openEconomy() {
+        resetGestures();
+        helpVisible=false;slotsVisible=false;inspectorVisible=false;economyVisible=true;
     }
 
     private void activateAction(int index) {
@@ -1127,7 +1157,7 @@ public final class CityGame extends ApplicationAdapter {
                 message(paintMode?"PINTAR: arraste para construir. Dois dedos movem camera.":
                     "MOVER: arraste a camera. Toque para construir.");
                 break;
-            case 3: helpVisible=true;break;
+            case 3: resetGestures();helpVisible=true;break;
             case 4: save(true);break;
             case 5: load(true);break;
             default: break;
@@ -1136,10 +1166,13 @@ public final class CityGame extends ApplicationAdapter {
 
     private final class Controls extends InputAdapter {
         @Override public boolean touchDown(int screenX,int screenY,int pointer,int button) {
+            if(!savesReady && !slotsVisible)openSlots();
             if (slotsVisible || economyVisible) {
-                if(pointer==0) { down[0]=true;px[0]=screenX;py[0]=screenY; }
+                if(pointer==0) { resetGestures();down[0]=true;px[0]=screenX;py[0]=screenY; }
+                else suppressTap=true;
                 return true;
             }
+            if (pointer<0)return false;
             if (pointer > 1) {
                 suppressTap=true;
                 return true;
@@ -1166,7 +1199,8 @@ public final class CityGame extends ApplicationAdapter {
                 }
             }
             if (pointer==1) {
-                secondPointerOnHud=HudLayout.isHud(screenX,screenY,w,h,uiScale);
+                secondPointerOnHud=HudLayout.isHud(screenX,screenY,w,h,uiScale) ||
+                    (inspectorVisible && HudLayout.inspectorAt(screenX,screenY,w,h,uiScale));
             }
             if (down[0] && down[1]) {
                 suppressTap=true;
@@ -1181,8 +1215,15 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchDragged(int screenX,int screenY,int pointer) {
-            if (slotsVisible || economyVisible)return true;
-            if (pointer>1 || !down[pointer])return false;
+            if (slotsVisible || economyVisible) {
+                if(pointer==0 && down[0]) {
+                    dragTravel+=Math.abs(screenX-px[0])+Math.abs(screenY-py[0]);
+                    px[0]=screenX;py[0]=screenY;
+                    if(dragTravel>12*uiScale)moving=true;
+                }
+                return true;
+            }
+            if (pointer<0 || pointer>1 || !down[pointer])return false;
             float prevX=px[pointer], prevY=py[pointer];
             float oldMidX=(px[0]+px[1])*0.5f,oldMidY=(py[0]+py[1])*0.5f;
             px[pointer]=screenX;py[pointer]=screenY;
@@ -1216,14 +1257,14 @@ public final class CityGame extends ApplicationAdapter {
             if(slotsVisible || economyVisible) {
                 if(pointer==0 && down[0]) {
                     down[0]=false;
-                    if(Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale) {
+                    if(!moving && !suppressTap && Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale) {
                         if(slotsVisible)slotsTap(screenX,screenY);
                         else economyTap(screenX,screenY);
                     }
                 }
                 return true;
             }
-            if(pointer>1)return true;
+            if(pointer<0 || pointer>1)return true;
             if(!down[pointer])return true;
             down[pointer]=false;
             if(pointer==0) {
@@ -1237,7 +1278,7 @@ public final class CityGame extends ApplicationAdapter {
                     int tool=HudLayout.toolAt(screenX,screenY,w,h,uiScale);
                     int quick=HudLayout.quickActionAt(screenX,screenY,w,uiScale);
                     if(quick>=0 && quick==pendingQuickAction) {
-                        if(quick==0) {economyVisible=true;brushCells.clear();}
+                        if(quick==0) openEconomy();
                         else if(quick==1) openSlots();
                         else recenter();
                     } else if (action>=0 && action==pendingAction) activateAction(action);
@@ -1266,20 +1307,26 @@ public final class CityGame extends ApplicationAdapter {
             if(!down[0] && !down[1])suppressTap=false;
             return true;
         }
+        @Override public boolean touchCancelled(int screenX,int screenY,int pointer,int button) {
+            resetGestures();return true;
+        }
         @Override public boolean scrolled(float amountX,float amountY) {
+            if(slotsVisible || economyVisible || helpVisible)return true;
             float sx=Gdx.input.getX(),sy=Gdx.input.getY();
             zoomAround(1f+amountY*0.12f,sx,sy,sx,sy);
             return true;
         }
         @Override public boolean keyDown(int keycode) {
             if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK) {
+                resetGestures();
+                if(helpVisible) {helpVisible=false;return true;}
                 if(economyVisible) {economyVisible=false;return true;}
                 if(slotsVisible && savesReady)slotsVisible=false;
                 else openSlots();
                 return true;
             }
-            if(slotsVisible || economyVisible)return true;
-            if(keycode==Input.Keys.E) {economyVisible=true;return true;}
+            if(slotsVisible || economyVisible || helpVisible || !savesReady)return true;
+            if(keycode==Input.Keys.E) {openEconomy();return true;}
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
             if(keycode==Input.Keys.SPACE)activateAction(0);
