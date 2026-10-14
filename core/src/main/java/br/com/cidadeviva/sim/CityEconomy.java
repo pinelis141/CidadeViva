@@ -24,6 +24,7 @@ public final class CityEconomy {
     /** Only workers who actually reach a workplace through connected roads. */
     public final int commutingResidents, disconnectedResidents, reachableJobs, commuteSteps, congestedRoads;
     public final CityMobility mobility;
+    public final CityNeighborhoods neighborhoods;
     public final int residentialDemand;
     public final int commercialDemand;
     public final int industrialDemand;
@@ -44,7 +45,7 @@ public final class CityEconomy {
                         int taxResidential, int taxCommercial, int taxIndustrial,
                         int roadMaintenance, int zoneMaintenance, int unserved,
                         int rateR, int rateC, int rateI, int qualityOfLife,
-                        CityMobility mobility) {
+                        CityMobility mobility, CityNeighborhoods neighborhoods) {
         this.population=population;
         this.jobs=jobs;
         this.commercialJobs=commerce;
@@ -55,6 +56,7 @@ public final class CityEconomy {
         this.employed=mobility.employed;
         this.unemployed=population-employed;
         this.mobility=mobility;
+        this.neighborhoods=neighborhoods;
         this.commutingResidents=mobility.reachableResidents;
         this.disconnectedResidents=mobility.disconnectedResidents;
         this.reachableJobs=mobility.reachableJobCapacity;
@@ -150,6 +152,7 @@ public final class CityEconomy {
         }
         int activeJobs=activeCommerce+activeIndustry;
         CityMobility mobility=CityMobility.analyze(city);
+        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility);
         int employed=mobility.employed;
         int employedCommerce=mobility.commercialWorkers;
         int employedIndustry=mobility.industrialWorkers;
@@ -174,6 +177,7 @@ public final class CityEconomy {
             - (100-commuteRatio)/3 - Math.min(12,mobility.congestedRoads*2)
             - Math.max(0,mobility.averageCommuteSteps-12)/2
             - (city.money()==0 && net<0?14:0),5,95);
+        if(population>0)quality=clamp((quality*2+neighborhoods.averageSatisfaction)/3,5,95);
         // Ratios prevent an enormous city from reaching demand limits merely
         // because it has more absolute residents than a starter town.
         int taxPenaltyR=2*(rateR-10);
@@ -194,6 +198,6 @@ public final class CityEconomy {
             -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure-disconnectedPenalty,5,95);
         return new CityEconomy(population,commerce+industry,commerce,industry,
             accessiblePopulation,activeJobs,residential,commercial,industrial,
-            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility);
+            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods);
     }
 }

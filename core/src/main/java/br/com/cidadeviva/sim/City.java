@@ -216,7 +216,7 @@ public final class City {
         String kind=t.type==TileType.RESIDENTIAL?"CASAS":
             t.type==TileType.COMMERCIAL?"LOJAS":"INDUSTRIA";
         CityEconomy report=economy();
-        return kind+" NV "+t.level+" | "+(hasRoad(x,y)?"RUA AO LADO | ":"")+report.mainConstraint(t.type,hasRoad(x,y));
+        return kind+" NV "+t.level+" | "+(hasRoad(x,y)?"RUA AO LADO | ":"")+report.neighborhoods.complaintAt(this,report.mobility,x,y);
     }
 
     public boolean hasRoad(int x,int y) {
@@ -298,9 +298,11 @@ public final class City {
             if(!t.type.isZone()) continue;
             boolean accessible=hasRoad(x,y);
             int demand=report.demand(t.type);
+            int localQuality=report.neighborhoods.satisfactionAt(x,y);
+            boolean unhealthy=t.type==TileType.RESIDENTIAL && localQuality<28;
             if(t.level>0 && ((!accessible && day>=14) ||
-                    (accessible && demand<20 && lowDemandDays(t.type)>=12))) {
-                float chance=!accessible?0.045f:0.02f+(20-demand)*0.0015f;
+                    (accessible && demand<20 && lowDemandDays(t.type)>=12) || (unhealthy && day>=14))) {
+                float chance=!accessible?0.045f:unhealthy?0.035f:0.02f+(20-demand)*0.0015f;
                 if(growthRoll(day,x,y,17)<chance) {
                     int from=t.level--;
                     recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
@@ -308,6 +310,8 @@ public final class City {
                 continue;
             }
             if(!accessible || demand<24 || t.level>=3)continue;
+            if(t.type==TileType.RESIDENTIAL && (unhealthy ||
+                (t.level==1 && localQuality<45) || (t.level==2 && localQuality<65)))continue;
             if(t.level==0 && occupiedToday>=vacantLimit)continue;
             // Empty roadside lots develop quickly; established buildings gain
             // levels progressively. High demand visibly improves the rhythm.
@@ -323,6 +327,7 @@ public final class City {
             }
             if(report.net<0 && money<3000)rate*=0.38f;
             if(report.qualityOfLife<45)rate*=0.55f;
+            if(t.type==TileType.RESIDENTIAL)rate*=0.6f+localQuality/125f;
             if(growthRoll(day,x,y,0)<rate) {
                 int from=t.level++;
                 if(from==0)occupiedToday++;
