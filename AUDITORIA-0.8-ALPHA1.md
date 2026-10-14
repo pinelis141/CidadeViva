@@ -12,6 +12,7 @@ Revisão de todos os módulos de produção em core, inicializadores Android/des
 | Temporário válido podia ser ignorado enquanto a versão primária antiga ainda existia | Recuperação prioriza o temporário validado, inclusive antes da rotação. Temporário incompleto não mascara primário válido. |
 | Texturas procedurais não se recuperavam de perda de contexto gráfico | Dados de textura gerenciados e pixmaps retidos até a liberação dos recursos. |
 | Prédios 2×2 podiam exigir rua individual dos terrenos interiores | Acesso e atendimento usam todo o perímetro compartilhado. |
+| Blocos vazios podiam ficar presos entre a exigência de atendimento e a falta de moradores para alocá-lo | Lotes sem demanda não recebem penalidade de saneamento; a primeira ocupação é avaliada prospectivamente com os moradores reais. |
 | Prévia de demolição poderia destacar apenas parte de um bloco | Expansão da seleção e do custo para todo o footprint, sem dupla devolução. |
 | Avaliar oferta apenas antes de consolidar/expandir não garantia recursos para o novo prédio | Simulação prospectiva verifica capacidade e restaura o estado ao negar a operação. |
 | Garagens da mesma rede podiam deixar frota ociosa; múltiplos acessos poderiam juntar vias desconectadas | Capacidade agrupada por componentes rodoviários reais, com uma vinculação por garagem. |
@@ -25,7 +26,7 @@ Revisão de todos os módulos de produção em core, inicializadores Android/des
 
 - Regressões de construção, pincel, orçamento, impostos, crescimento, abandono, câmera, marcos, ambientes, slots, CRC, recuperação e migrações.
 - 157 casos do código real de controles, incluindo novos serviços, camadas em retrato/paisagem e telas reduzidas, empréstimos, retorno de menus e ausência de construção por toque em controles.
-- 27.911 verificações de footprints, saneamento, segurança, classes, ônibus, camadas e CVT7.
+- 27.913 verificações de footprints, saneamento, segurança, classes, ônibus, camadas e CVT7.
 - Cenários mistos de **300 dias**, com três cidades, demolições, dívidas e recargas; invariantes de caixa, vagas, população, classe, recursos, frota, níveis, incêndios e blocos. Mais de 1,38 milhão de verificações de estado.
 - Contratos de empréstimo acompanhados até a quitação, incluindo falta de caixa, parcial e previsão da última parcela.
 - Compilação Java com `-Xlint:all` e inspeção da imagem dos nove edifícios e seis novos serviços.

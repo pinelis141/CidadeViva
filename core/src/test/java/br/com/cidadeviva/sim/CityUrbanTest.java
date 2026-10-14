@@ -72,6 +72,12 @@ public final class CityUrbanTest {
         for(CityLayer layer:CityLayer.values())for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++){int score=layer.score(c,c.economy(),x,y);ok(score>=-1&&score<=100,"layer bounded and covers all terrain types");}
         CityEconomy e=c.economy();ok(e.neighborhoods.popularResidents+e.neighborhoods.middleResidents+e.neighborhoods.wealthyResidents==e.population,"social groups conserve population");
         ok(e.expenses==e.roadMaintenance+e.zoneMaintenance+e.serviceMaintenance+e.loanPayment,"new services counted once in budget");
+        City vacant=blockCity();
+        for(int x=10;x<=11;x++)for(int y=10;y<=11;y++)vacant.tile(x,y).level=0;
+        vacant.build(16,8,TileType.WASTE_CENTER);vacant.build(18,8,TileType.SEWAGE_PLANT);
+        ok(CityBlocks.consolidate(vacant,10,10,vacant.economy()),"vacant block can reserve realistic services for its first residents");
+        for(int d=0;d<80;d++)vacant.nextDay();
+        ok(vacant.residents()>0&&CityBlocks.valid(newTileCopy(vacant)),"vacant group attracts residents with active sanitation, without a circular occupancy requirement");
         System.out.println("OK: "+checks+" urban footprint, sanitation, safety, social classes, transit, overlays and CVT7 checks.");
     }
     private static Tile[][] newTileCopy(City c){Tile[][] t=new Tile[City.WIDTH][City.HEIGHT];for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++)t[x][y]=c.tile(x,y);return t;}

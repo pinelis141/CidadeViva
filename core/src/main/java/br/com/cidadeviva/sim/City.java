@@ -402,7 +402,7 @@ public final class City {
                 boolean ready=true;int ax=(t.block-1)/HEIGHT,ay=(t.block-1)%HEIGHT;
                 for(int nx=ax;nx<ax+2;nx++)for(int ny=ay;ny<ay+2;ny++)
                     if(!report.utilities.hasSupply(nx,ny)||!report.civics.healthy(nx,ny)||
-                        (t.type==TileType.RESIDENTIAL&&(report.neighborhoods.satisfactionAt(nx,ny)<65||!report.services.readyForDensity(this,nx,ny))))ready=false;
+                        (t.type==TileType.RESIDENTIAL&&t.level>0&&(report.neighborhoods.satisfactionAt(nx,ny)<65||!report.services.readyForDensity(this,nx,ny))))ready=false;
                 if(!ready)continue;
             }
             if(t.level>0 && !report.utilities.hasSupply(x,y))continue;

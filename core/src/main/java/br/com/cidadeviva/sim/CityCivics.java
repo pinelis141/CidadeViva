@@ -44,9 +44,9 @@ public final class CityCivics {
     public int served(TileType t){return served[index(t)];}
     public int capacityFor(TileType t){return capacity[index(t)];}
     public int percent(TileType t,int x,int y){int need=units[x*H+y];return need==0?0:coveredAt(t,x,y)*100/need;}
-    public int sanitationPenalty(int x,int y){return (wasteEnabled?(100-percent(TileType.WASTE_CENTER,x,y))*10/100:0)+(sewageEnabled?(100-percent(TileType.SEWAGE_PLANT,x,y))*14/100:0);}
+    public int sanitationPenalty(int x,int y){if(units[x*H+y]==0)return 0;return (wasteEnabled?(100-percent(TileType.WASTE_CENTER,x,y))*10/100:0)+(sewageEnabled?(100-percent(TileType.SEWAGE_PLANT,x,y))*14/100:0);}
     public int crimeAt(int x,int y){int id=x*H+y;if(units[id]==0)return 0;
         return Math.max(0,12+levels[id]*5+(emptyTreasury?12:0)-percent(TileType.POLICE_STATION,x,y)*35/100);}
     public int safetyBonus(int x,int y){return percent(TileType.POLICE_STATION,x,y)*5/100;}
-    public boolean healthy(int x,int y){return (!wasteEnabled||percent(TileType.WASTE_CENTER,x,y)==100)&&(!sewageEnabled||percent(TileType.SEWAGE_PLANT,x,y)==100);}
+    public boolean healthy(int x,int y){if(units[x*H+y]==0)return true;return (!wasteEnabled||percent(TileType.WASTE_CENTER,x,y)==100)&&(!sewageEnabled||percent(TileType.SEWAGE_PLANT,x,y)==100);}
 }
