@@ -1,3 +1,9 @@
+## 0.8.0-alpha2 — Sem pausa financeira
+
+- Removida por solicitação do usuário a pausa automática por caixa baixo, antes e depois do avanço do dia.
+- A previsão de caixa continua disponível no ECON, sem interromper o jogo.
+- Pausa manual e pausa ao abrir menus continuam disponíveis. CVT7 e assinatura de teste preservados.
+
 ## 0.8.0-alpha1 — Cidade integrada
 
 - Seis frentes do backlog: 2×2; camadas; classes e valorização; segurança/incêndios; saneamento; transporte/congestionamento.

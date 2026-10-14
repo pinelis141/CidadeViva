@@ -186,7 +186,6 @@ public final class City {
         return operating>=0?Integer.MAX_VALUE:(int)Math.min(Integer.MAX_VALUE,days+cash/-operating);
     }
 
-    public boolean needsBudgetPause() {return cashRunwayDays()<=7;}
 
     /** Retorna mensagem de feedback; não modifica o mapa se a operação for inválida. */
     public String build(int x, int y, TileType type) {

@@ -5,7 +5,9 @@
 **Stack:** Java 17, libGDX, Gradle, Android (prioritário), desktop (secundário).  
 **Produto:** city builder isométrico original, single-player e offline, com progressão econômica, infraestrutura, serviços e evolução visual em pixel art. Sem reutilizar código, marca ou assets de TheoTown.
 
-## Estado atual — 0.8 Alpha 1
+## Estado atual — 0.8 Alpha 2
+
+**Ajuste Alpha 2:** pausa automática por caixa baixo removida por solicitação do usuário. Diagnóstico financeiro permanece no ECON.
 
 Esta seção é a referência atual. As atualizações e marcos abaixo registram o histórico do plano e não devem ser lidos como lista atual de ausências.
 

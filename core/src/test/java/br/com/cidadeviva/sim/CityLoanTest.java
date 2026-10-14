@@ -52,7 +52,7 @@ public final class CityLoanTest {
         ok(!cap.borrow(CityLoan.LARGE)&&cap.money()==Integer.MAX_VALUE,"credit cannot overflow treasury");
         ok(!new City().borrow(null),"invalid offer rejected");
         City finite=new City();finite.restore(map,55,1,0);finite.restoreLoan(55,55);
-        ok(!finite.needsBudgetPause(),"affordable final installment does not trigger a permanent safety pause");
+        ok(finite.cashRunwayDays()==Integer.MAX_VALUE,"affordable final installment does not forecast permanent depletion");
         finite.nextDay();ok(finite.loanBalance()==0&&finite.money()==0,"final affordable payment can complete");
         City transientDeficit=new City();transientDeficit.borrow(CityLoan.LARGE);
         ok(transientDeficit.economy().net<0&&transientDeficit.cashRunwayDays()==Integer.MAX_VALUE,"finite debt is not forecast as an endless operating deficit");

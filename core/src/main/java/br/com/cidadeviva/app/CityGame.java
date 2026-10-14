@@ -204,7 +204,6 @@ public final class CityGame extends ApplicationAdapter {
             simClock += delta * simulationSpeed;
             while (simClock >= SECONDS_PER_DAY) {
                 simClock -= SECONDS_PER_DAY;
-                if(pauseForBudgetIfNeeded())break;
                 city.nextDay();
                 if(!city.recentMilestones().isEmpty()) {
                     milestoneBanner=city.recentMilestones().get(city.recentMilestones().size()-1);
@@ -223,7 +222,6 @@ public final class CityGame extends ApplicationAdapter {
                 // Rebuild activity once per simulated day, including fire/route changes.
                 refreshActivity();
                 if (city.day() % 15 == 0) save(false);
-                if(pauseForBudgetIfNeeded())break;
             }
         }
         // Matt forest-green fog surrounds map bounds; avoids pure black corners.
@@ -1169,14 +1167,6 @@ public final class CityGame extends ApplicationAdapter {
             shapes.setColor(0.98f,0.28f,0.05f,0.95f);shapes.triangle(sx-9,sy,sx+9,sy,sx+flicker,sy+28);
             shapes.setColor(1f,0.82f,0.18f,1);shapes.triangle(sx-5,sy,sx+5,sy,sx-flicker,sy+17);
         }
-    }
-
-    private boolean pauseForBudgetIfNeeded() {
-        if(!city.needsBudgetPause())return false;
-        simulationPaused=true;
-        simClock=0;
-        message("CAIXA BAIXO: tempo pausado. Revise o saldo em ECON.");
-        return true;
     }
 
     private void message(String text) { toast=text;toastClock=3f; }

@@ -51,8 +51,8 @@ public final class CityRecoveryTest {
         City empty=new City();
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++){Tile t=empty.tile(x,y);map[x][y]=new Tile(t.type==TileType.RESIDENTIAL?TileType.GRASS:t.type,t.type==TileType.RESIDENTIAL?0:t.level);}
         empty.restore(map,100,1,0);
-        check(empty.economy().net<0&&empty.needsBudgetPause(),"unfunded empty district triggers budget guard");
-        check(!new City().needsBudgetPause(),"profitable city never pauses for low runway");
-        System.out.println("OK: remodeling, refunds, bankruptcy recovery, CVT5 replay and budget guard; minimum reserve="+minimum);
+        check(empty.economy().net<0&&empty.cashRunwayDays()<=7,"budget still forecasts low cash");
+        check(new City().cashRunwayDays()==Integer.MAX_VALUE,"profitable city has no depletion forecast");
+        System.out.println("OK: remodeling, refunds, bankruptcy recovery, CVT5 replay and cash forecast; minimum reserve="+minimum);
     }
 }

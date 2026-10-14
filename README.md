@@ -1,3 +1,7 @@
+## Atualização atual — 0.8.0-alpha2-sem-pausa
+
+A simulação continua normalmente com caixa baixo ou zerado. O orçamento mantém os indicadores financeiros. Mesmos saves CVT7 e assinatura DEV da 0.8 Alpha 1.
+
 ## Versão atual — 0.8.0-alpha1-cidade-integrada
 
 Edifícios 2×2, camadas, classes/valorização, bombeiros/polícia, lixo/esgoto, ônibus e congestionamento integrado. [Regras e operação](CIDADE-INTEGRADA-0.8-ALPHA1.md) · [Auditoria](AUDITORIA-0.8-ALPHA1.md) · [Backlog atual](BACKLOG.md).

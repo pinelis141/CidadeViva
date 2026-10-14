@@ -167,23 +167,6 @@ public final class CityControlsTest {
             }
         }
         font.dispose();
-        // Real UI safeguard must stop accelerated time and explain the pause.
-        City risk=new City();
-        br.com.cidadeviva.sim.Tile[][] riskMap=new br.com.cidadeviva.sim.Tile[City.WIDTH][City.HEIGHT];
-        for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++)
-            riskMap[x][y]=new br.com.cidadeviva.sim.Tile(br.com.cidadeviva.sim.TileType.ROAD);
-        java.lang.reflect.Method restore=City.class.getDeclaredMethod("restore",br.com.cidadeviva.sim.Tile[][].class,int.class,int.class,int.class);
-        restore.setAccessible(true);restore.invoke(risk,riskMap,100,50,0);
-        put(game,"city",risk);put(game,"simClock",100f);put(game,"simulationPaused",false);
-        java.lang.reflect.Method guard=CityGame.class.getDeclaredMethod("pauseForBudgetIfNeeded");
-        guard.setAccessible(true);
-        check((boolean)guard.invoke(game),"budget guard identifies insolvency risk");
-        check((boolean)get(game,"simulationPaused") && (float)get(game,"simClock")==0,
-            "budget guard pauses and discards accumulated fast-forward time");
-        check(risk.money()==100 && risk.day()==50,"budget guard acts before spending the remaining cash");
-        check(((String)get(game,"toast")).contains("ECON"),"budget guard explains how to review finances");
-        put(game,"city",new City());put(game,"simulationPaused",false);
-        check(!(boolean)guard.invoke(game) && !(boolean)get(game,"simulationPaused"),"solvent town continues running");
         System.out.println("OK: "+checks+" actual controls and camera/lifecycle regressions.");
     }
 }
