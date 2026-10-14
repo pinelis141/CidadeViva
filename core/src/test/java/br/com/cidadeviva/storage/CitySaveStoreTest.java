@@ -53,6 +53,26 @@ public final class CitySaveStoreTest {
             ok(store.load().city.day()==day1.day(),"save após recovery");
             ok(new File(file.getPath()+".bak").exists(),"backup após recovery");
             ok(new File(file.getPath()+".corrupt").exists(),"corrupção preservada");
+            // Simulate a process dying after primary -> backup, before temp -> primary.
+            File interrupted=new File(dir,"interrupted.cvt");
+            CitySaveStore interruptedStore=new CitySaveStore(interrupted);
+            interruptedStore.save(day1);
+            ByteArrayOutputStream latest=new ByteArrayOutputStream();
+            CityPersistence.save(day2,latest);
+            Files.write(new File(interrupted.getPath()+".tmp").toPath(),latest.toByteArray());
+            ok(interrupted.renameTo(new File(interrupted.getPath()+".bak")),"simulate save rotation crash");
+            ok(interruptedStore.hasAnySave(),"interrupted state recognized");
+            ok(interruptedStore.load().city.day()==day2.day(),"recover latest temp rather than old backup");
+            interruptedStore.save(interruptedStore.load().city);
+            ok(interruptedStore.load().city.day()==day2.day(),"recovered temp can be committed safely");
+            File orphan=new File(dir,"orphan.cvt");
+            Files.write(new File(orphan.getPath()+".tmp").toPath(),latest.toByteArray());
+            CitySaveStore orphanStore=new CitySaveStore(orphan);
+            ok(orphanStore.hasAnySave(),"temp-only slot is occupied");
+            ok(orphanStore.load().city.day()==day2.day(),"temp-only first save recovered");
+            Files.write(new File(orphan.getPath()+".tmp").toPath(),new byte[]{1});
+            try {orphanStore.load();throw new AssertionError("corrupt temp silently erased");}
+            catch(java.io.IOException expected){checks++;}
             // Invalid/truncated data must not be interpreted as a valid game.
             ByteArrayOutputStream out=new ByteArrayOutputStream();
             CityPersistence.save(day2,out);

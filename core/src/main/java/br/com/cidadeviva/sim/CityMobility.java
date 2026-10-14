@@ -3,6 +3,7 @@ package br.com.cidadeviva.sim;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -131,8 +132,12 @@ public final class CityMobility {
                 }
             }
             if(!offers.isEmpty())reachable+=home.capacity;
-            offers.sort(Comparator.comparingInt((Offer o)->o.distance)
-                .thenComparingInt(o->jobs.get(o.job).id));
+            Collections.sort(offers,new Comparator<Offer>() {
+                @Override public int compare(Offer a,Offer b) {
+                    int distanceOrder=Integer.compare(a.distance,b.distance);
+                    return distanceOrder!=0?distanceOrder:Integer.compare(jobs.get(a.job).id,jobs.get(b.job).id);
+                }
+            });
             int available=home.capacity;
             for(Offer offer:offers) {
                 Building job=jobs.get(offer.job);

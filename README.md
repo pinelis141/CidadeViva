@@ -1,3 +1,7 @@
+## 0.5 Alpha 3 — auditoria e correções
+
+Câmera preservada ao girar, controles protegidos contra interrupção/cliques acidentais, recuperação de saves temporários e feedback correto de deterioração. Atualização DEV compatível com CVT3 e três cidades. Veja [relatório e QA](AUDITORIA-0.5-ALPHA3.md).
+
 ## 0.5.0-alpha2-bairros
 
 Satisfação local, poluição industrial e comércio conectado agora influenciam a evolução residencial. Reclamações no inspetor, alertas e SAT/POL em ECON. CVT3 e assinatura DEV mantidos. Serviços públicos e prédios maiores continuam pendentes. Veja [design e QA](DESIGN-BAIRROS-0.5-ALPHA2.md).

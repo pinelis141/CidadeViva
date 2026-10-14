@@ -12,7 +12,9 @@ public final class HudLayout {
     private HudLayout() { }
 
     public static float scale(float width,float height) {
-        return clamp(Math.min(width / 730f,height / 970f),0.65f,1.65f);
+        // Preserve normal UI sizing, but fit the tallest (558-unit) dialog
+        // inside short landscape screens with breathing room.
+        return Math.min(clamp(Math.min(width / 730f,height / 970f),0.65f,1.65f),height/600f);
     }
     public static float clamp(float value,float min,float max) {
         return Math.max(min,Math.min(max,value));

@@ -42,6 +42,11 @@ public final class ControlsMathTest {
             ok(HudLayout.isHud(w/2f,150*u,w,h,u),"demanda protegida");
             ok(HudLayout.isHud(w/2f,180*u,w,h,u),"alertas protegidos");
         }
+        for(float[] size:new float[][]{{640,360},{800,320},{320,640}}) {
+            float u=HudLayout.scale(size[0],size[1]);
+            ok(558*u<=size[1]-8,"economy modal fits short viewport");
+            ok((HudLayout.TOP_HEIGHT+HudLayout.BOTTOM_HEIGHT)*u<size[1],"map remains reachable in landscape");
+        }
         for (int x=0;x<48;x++) for (int y=0;y<48;y++) {
             int[] point=IsoGrid.pick((x-y)*32f,-(x+y)*16f,32,16);
             ok(point[0]==x && point[1]==y,"seleção de tile "+x+","+y);

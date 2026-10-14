@@ -32,13 +32,22 @@ public final class CitySaveStore {
         this.discarded = new File(primary.getPath() + ".corrupt");
     }
 
-    public boolean hasAnySave() { return primary.exists() || backup.exists(); }
+    public boolean hasAnySave() { return primary.exists() || temporary.exists() || backup.exists(); }
 
     public Loaded load() throws IOException {
         IOException issue = null;
         if (primary.exists()) {
             try { return new Loaded(read(primary), false); }
             catch (IOException e) { issue = e; }
+        }
+        // A crash between rotating primary and promoting a fully written temp
+        // must recover the latest verified state, not initialize a fresh city.
+        if (temporary.exists()) {
+            try { return new Loaded(read(temporary), true); }
+            catch (IOException e) {
+                if (issue!=null)e.addSuppressed(issue);
+                issue=e;
+            }
         }
         if (backup.exists()) {
             try { return new Loaded(read(backup), true); }

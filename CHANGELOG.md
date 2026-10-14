@@ -1,3 +1,7 @@
+## 0.5.0-alpha3-auditoria
+
+Correções de câmera/rotação, gestos cancelados, pintura sobre HUD, cliques em modais, BACK/ajuda, feedback de deterioração, recuperação de saves interrompidos, diálogos em paisagem, reset de load, status de slots danificados, ordenação compatível com API23 e assets desktop. Testes do adaptador real adicionados ao CI. Veja [auditoria](AUDITORIA-0.5-ALPHA3.md).
+
 ## 0.5.0-alpha2-bairros
 
 Satisfação local, poluição industrial e comércio conectado agora influenciam a evolução residencial. Reclamações no inspetor, alertas e SAT/POL em ECON. CVT3 e assinatura DEV mantidos. Serviços públicos e prédios maiores continuam pendentes. Veja [design e QA](DESIGN-BAIRROS-0.5-ALPHA2.md).
