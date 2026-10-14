@@ -661,7 +661,8 @@ public final class CityGame extends ApplicationAdapter {
             eco.neighborhoods.pollutedResidents>0?"! "+eco.neighborhoods.pollutedResidents+" SOFREM POLUICAO":
             eco.neighborhoods.dissatisfiedResidents>0?"! "+eco.neighborhoods.dissatisfiedResidents+" INSATISFEITOS":
             nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
-            missing>0?amber:good,(w-32*u)*0.48f);
+            (missing>0 || eco.disconnectedResidents>0 || eco.congestedRoads>=3 ||
+                eco.neighborhoods.pollutedResidents>0 || eco.neighborhoods.dissatisfiedResidents>0)?amber:good,(w-32*u)*0.48f);
         String labor="QUAL "+eco.qualityOfLife+" | TRAB "+eco.employed+" | DES "+eco.unemployed;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
         for(int i=0;i<HudLayout.ACTIONS;i++) {
@@ -800,6 +801,8 @@ public final class CityGame extends ApplicationAdapter {
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
         label("QUAL "+report.qualityOfLife+" | EMP "+report.employed+"/"+report.population+
             " | SAT "+report.neighborhoods.averageSatisfaction+" | POL "+report.neighborhoods.pollutedResidents,x+21*u,y+465*u,0.95f,sub,ww-42*u);
+        label("VIAGEM "+report.commuteSteps+" | RUAS CONGESTIONADAS "+report.congestedRoads,
+            x+21*u,y+444*u,0.95f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
             int demand=report.demand(TAX_TYPES[i]);
