@@ -13,6 +13,8 @@ public final class CityActivity {
     private static final int[] DY={0,0,1,-1};
     private final List<Car> cars;
     private final List<Walker> walkers;
+    private final List<Bus> buses;
+    public List<Bus> buses(){return buses;}
 
     public CityActivity(City city) {
         CityMobility mobility=city.economy().mobility;
@@ -30,7 +32,7 @@ public final class CityActivity {
         // a hard cap to protect frame time and avoid unrealistic traffic clutter.
         int carCount=Math.min(18,Math.min(roads.size(),mobility.employed/7));
         for(int i=0;i<carCount;i++) {
-            int[] position=roads.get(Math.floorMod(i*17+i*i*11+3,roads.size()));
+            int[] position=roads.get(CityMath.floorMod(i*17+i*i*11+3,roads.size()));
             ArrayList<int[]> route=new ArrayList<>();
             route.add(position);
             int px=Integer.MIN_VALUE,py=Integer.MIN_VALUE;
@@ -50,19 +52,25 @@ public final class CityActivity {
                     int[] previous=route.get(route.size()-2);
                     px=position[0];py=position[1];position=previous;
                 } else {
-                    int pick=Math.floorMod(i*31+step*13+position[0]*3+position[1]*7,size);
+                    int pick=CityMath.floorMod(i*31+step*13+position[0]*3+position[1]*7,size);
                     px=position[0];py=position[1];
                     position=new int[]{options[pick][0],options[pick][1]};
                 }
                 route.add(position);
             }
-            if(route.size()>1)moving.add(new Car(route,i));
+            if(route.size()>1){int peak=0;for(int[] cell:route)peak=Math.max(peak,mobility.trafficAt(cell[0],cell[1]));moving.add(new Car(route,i,1f+peak/80f));}
         }
         cars=Collections.unmodifiableList(moving);
+        ArrayList<Bus> transit=new ArrayList<>();int routeIndex=0;
+        for(int[] route:mobility.transit.routes()){
+            if(mobility.ridersInNetwork(mobility.transit.routeNetwork(routeIndex++))==0)continue;
+            if(transit.size()<8)transit.add(new Bus(route,transit.size()));
+        }
+        buses=Collections.unmodifiableList(transit);
         ArrayList<Walker> people=new ArrayList<>();
         int peopleCount=Math.min(26,buildings.size());
         for(int i=0;i<peopleCount;i++) {
-            int[] tile=buildings.get(Math.floorMod(i*11+i*i*3+1,buildings.size()));
+            int[] tile=buildings.get(CityMath.floorMod(i*11+i*i*3+1,buildings.size()));
             people.add(new Walker(tile[0],tile[1],i));
         }
         walkers=Collections.unmodifiableList(people);
@@ -74,10 +82,10 @@ public final class CityActivity {
         private final int[][] cells;
         private final float offset,speed;
         public final int colorVariant;
-        private Car(List<int[]> route,int variant) {
+        private Car(List<int[]> route,int variant,float delay) {
             cells=route.toArray(new int[0][]);
             offset=(variant*7.31f)%16f;
-            speed=0.35f+(variant%4)*0.08f;
+            speed=(0.35f+(variant%4)*0.08f)/delay;
             colorVariant=variant%5;
         }
         public int pathLength(){return cells.length;}
@@ -94,6 +102,18 @@ public final class CityActivity {
             int b=index<cells.length-1?index+1:segments-index-1;
             out[0]=cells[a][0]+(cells[b][0]-cells[a][0])*progress;
             out[1]=cells[a][1]+(cells[b][1]-cells[a][1])*progress;
+        }
+    }
+    public static final class Bus {
+        private final int[] route;private final float offset;
+        private Bus(int[] route,int index){this.route=route.clone();offset=index*2.7f;}
+        public int pathLength(){return route.length;}
+        public int roadId(int i){return route[i];}
+        public void sample(float seconds,float[] out){
+            float segment=(Math.max(0,seconds)*.45f+offset)%((route.length-1)*2);int i=(int)segment;float part=segment-i;
+            int a=i<route.length-1?i:(route.length-1)*2-i,b=i<route.length-1?i+1:(route.length-1)*2-i-1;
+            out[0]=route[a]/City.HEIGHT+(route[b]/City.HEIGHT-route[a]/City.HEIGHT)*part;
+            out[1]=route[a]%City.HEIGHT+(route[b]%City.HEIGHT-route[a]%City.HEIGHT)*part;
         }
     }
     public static final class Walker {

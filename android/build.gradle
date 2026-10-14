@@ -2,12 +2,13 @@ plugins { id 'com.android.application' }
 android {
     namespace 'br.com.cidadeviva.android'
     compileSdk 35
+    lint { checkDependencies true; abortOnError true }
     defaultConfig {
         applicationId 'br.com.cidadeviva.game'
         minSdk 23
         targetSdk 35
-        versionCode 21
-        versionName '0.7.0-alpha3-emprestimos'
+        versionCode 22
+        versionName '0.8.0-alpha1-cidade-integrada'
     }
     sourceSets { main { jniLibs.srcDirs = ['libs']; assets.srcDirs = ['assets'] } }
     signingConfigs {

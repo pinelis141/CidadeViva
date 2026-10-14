@@ -29,6 +29,8 @@ public final class CityEconomy {
     public final CityUtilities utilities;
     public final int serviceMaintenance;
     public final int loanPayment;
+    public final CityCivics civics;
+    public final int burningBuildings;
     public final int residentialDemand;
     public final int commercialDemand;
     public final int industrialDemand;
@@ -49,7 +51,9 @@ public final class CityEconomy {
                         int taxResidential, int taxCommercial, int taxIndustrial,
                         int roadMaintenance, int zoneMaintenance, int unserved,
                         int rateR, int rateC, int rateI, int qualityOfLife,
-                        CityMobility mobility, CityNeighborhoods neighborhoods,CityServices services,CityUtilities utilities,int loanPayment) {
+                        CityMobility mobility, CityNeighborhoods neighborhoods,CityServices services,CityUtilities utilities,int loanPayment,CityCivics civics,int burningBuildings) {
+        this.burningBuildings=burningBuildings;
+        this.civics=civics;
         this.population=population;
         this.jobs=jobs;
         this.commercialJobs=commerce;
@@ -61,7 +65,7 @@ public final class CityEconomy {
         this.unemployed=population-employed;
         this.mobility=mobility;
         this.neighborhoods=neighborhoods;
-        this.utilities=utilities;this.services=services;this.serviceMaintenance=services.maintenance;
+        this.utilities=utilities;this.services=services;this.serviceMaintenance=services.maintenance+civics.maintenance;
         this.commutingResidents=mobility.reachableResidents;
         this.disconnectedResidents=mobility.disconnectedResidents;
         this.reachableJobs=mobility.reachableJobCapacity;
@@ -127,12 +131,13 @@ public final class CityEconomy {
         int population=0, commerce=0, industry=0;
         int accessiblePopulation=0, activeCommerce=0, activeIndustry=0;
         int roads=0, zones=0, emptyR=0,emptyC=0,emptyI=0, unserved=0;
-        int buildingMaintenance=0;
+        int buildingMaintenance=0,burning=0;
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++) {
             Tile t=city.tile(x,y);
             if(t.type==TileType.ROAD){roads++;continue;}
             if(!t.type.isZone())continue;
             zones++;
+            if(t.fireDays>0&&CityBlocks.anchor(city,x,y))burning++;
             boolean access=city.hasRoad(x,y);
             if(!access)unserved++;
             switch(t.type) {
@@ -160,7 +165,8 @@ public final class CityEconomy {
         int activeJobs=activeCommerce+activeIndustry;
         CityMobility mobility=CityMobility.analyze(city,utilities);
         CityServices services=CityServices.analyze(city,utilities);
-        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility,services,utilities);
+        CityCivics civics=CityCivics.analyze(city,utilities,mobility);
+        CityNeighborhoods neighborhoods=CityNeighborhoods.analyze(city,mobility,services,utilities,civics);
         int employed=mobility.employed;
         int employedCommerce=mobility.commercialWorkers;
         int employedIndustry=mobility.industrialWorkers;
@@ -170,13 +176,16 @@ public final class CityEconomy {
         // An unemployed household contributes less than a working household;
         // inaccessible homes contribute no taxes. Unstaffed workplaces pay none.
         int residentialBase=(employed*105 + (accessiblePopulation-employed)*30)/100;
-        int rTax=taxYield(residentialBase,rateR);
+        int classPremium=0;
+        for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++)
+            if(city.tile(x,y).type==TileType.RESIDENTIAL)classPremium+=mobility.employedAt(x,y)*neighborhoods.wealthAt(x,y)*10/100;
+        int rTax=taxYield(residentialBase+classPremium,rateR);
         int cTax=taxYield(employedCommerce*2,rateC);
         int iTax=taxYield(employedIndustry*2,rateI);
         int roadCost=roads*3;
         // Private buildings fund their own upkeep; the city pays linear local administration.
         int zoneCost=zones+buildingMaintenance;
-        int net=rTax+cTax+iTax-roadCost-zoneCost-services.maintenance-city.loanPayment();
+        int net=rTax+cTax+iTax-roadCost-zoneCost-services.maintenance-civics.maintenance-city.loanPayment();
         int employmentRatio=population==0?100:(int)((long)employed*100/population);
         int accessRatio=zones==0?100:100-(int)((long)unserved*100/zones);
         int commuteRatio=accessiblePopulation==0?100:
@@ -207,6 +216,6 @@ public final class CityEconomy {
             -supplyPenalty(emptyI)-taxPenaltyI-fiscalPressure-disconnectedPenalty,5,95);
         return new CityEconomy(population,commerce+industry,commerce,industry,
             accessiblePopulation,activeJobs,residential,commercial,industrial,
-            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods,services,utilities,city.loanPayment());
+            rTax,cTax,iTax,roadCost,zoneCost,unserved,rateR,rateC,rateI,quality,mobility,neighborhoods,services,utilities,city.loanPayment(),civics,burning);
     }
 }

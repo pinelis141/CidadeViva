@@ -1,3 +1,11 @@
+## Versão atual — 0.8.0-alpha1-cidade-integrada
+
+Edifícios 2×2, camadas, classes/valorização, bombeiros/polícia, lixo/esgoto, ônibus e congestionamento integrado. [Regras e operação](CIDADE-INTEGRADA-0.8-ALPHA1.md) · [Auditoria](AUDITORIA-0.8-ALPHA1.md) · [Backlog atual](BACKLOG.md).
+
+Salva CVT7 e abre CVT1–CVT6. Atualizar sobre Cidade Viva Teste sem desinstalar; não retornar a APK anterior após salvar.
+
+---
+
 > Atualização de teste: **0.7.0-alpha3-emprestimos**. Veja [ofertas, regras e validação](EMPRESTIMOS-0.7-ALPHA3.md). Grava CVT6, lê saves anteriores; não fazer downgrade após salvar.
 
 > Atualização de teste: **0.7.0-alpha2-balanceamento**. Veja [o balanceamento e as verificações](BALANCEAMENTO-0.7-ALPHA2.md).

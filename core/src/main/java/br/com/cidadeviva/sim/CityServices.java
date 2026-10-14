@@ -8,7 +8,7 @@ import java.util.List;
 
 /** Deterministic, capacity-limited public services distributed through actual roads. */
 public final class CityServices {
-    public static final TileType[] BUILD_MENU={TileType.PARK,TileType.SCHOOL,TileType.CLINIC,TileType.POWER_PLANT,TileType.WATER_PUMP};
+    public static final TileType[] BUILD_MENU={TileType.PARK,TileType.SCHOOL,TileType.CLINIC,TileType.POWER_PLANT,TileType.WATER_PUMP,TileType.FIRE_STATION,TileType.POLICE_STATION,TileType.WASTE_CENTER,TileType.SEWAGE_PLANT,TileType.BUS_DEPOT,TileType.BUS_STOP};
     public static final TileType[] TYPES={TileType.PARK,TileType.SCHOOL,TileType.CLINIC};
     private static final int H=City.HEIGHT,N=City.WIDTH*H;
     private final int[][] coverage=new int[3][N];
@@ -18,24 +18,21 @@ public final class CityServices {
         for(int i=0;i<TYPES.length;i++)if(TYPES[i]==type)return i;
         throw new IllegalArgumentException("Servico invalido");
     }
-    public static int capacity(TileType type) {return type.isUtility()?CityUtilities.capacity(type):type==TileType.PARK?96:type==TileType.SCHOOL?180:144;}
-    public static int range(TileType type) {return type==TileType.PARK?6:12;}
-    public static int upkeep(TileType type) {return type.isUtility()?CityUtilities.upkeep(type):type==TileType.PARK?8:type==TileType.SCHOOL?24:30;}
-    public static String name(TileType type) {return type.isUtility()?CityUtilities.name(type):type==TileType.PARK?"PARQUE":type==TileType.SCHOOL?"ESCOLA":"POSTO DE SAUDE";}
+    public static int capacity(TileType type) {return type.isCivic()?CityCivics.capacity(type):type.isUtility()?CityUtilities.capacity(type):type==TileType.PARK?96:type==TileType.SCHOOL?180:144;}
+    public static int range(TileType type) {return type.isCivic()?CityCivics.range(type):type==TileType.PARK?6:12;}
+    public static int upkeep(TileType type) {return type.isCivic()?CityCivics.upkeep(type):type.isUtility()?CityUtilities.upkeep(type):type==TileType.PARK?8:type==TileType.SCHOOL?24:30;}
+    public static String name(TileType type) {return type.isCivic()?CityCivics.name(type):type.isUtility()?CityUtilities.name(type):type==TileType.PARK?"PARQUE":type==TileType.SCHOOL?"ESCOLA":"POSTO DE SAUDE";}
     private CityServices(City city,CityUtilities utilities) {
         int cost=utilities.maintenance,total=0,active=0;
         int[] distance=new int[N],queue=new int[N];
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<H;y++) {
             TileType type=city.tile(x,y).type;
-            if(!type.isService())continue;
+            if(!type.isSocialService())continue;
             total++;cost+=upkeep(type);
             if(city.money()==0 || !city.hasRoad(x,y) || !utilities.hasSupply(x,y))continue;
             active++;
             Arrays.fill(distance,-1);int head=0,tail=0;
-            for(int d=0;d<4;d++) {
-                int nx=x+dx(d),ny=y+dy(d);
-                if(road(city,nx,ny)){int id=nx*H+ny;distance[id]=0;queue[tail++]=id;}
-            }
+            for(int id:CityRoads.entries(city,x,y)){distance[id]=0;queue[tail++]=id;}
             while(head<tail) {
                 int id=queue[head++],rx=id/H,ry=id%H;
                 if(distance[id]>=range(type))continue;
@@ -52,10 +49,7 @@ public final class CityServices {
                 Tile home=city.tile(hx,hy);
                 if(home.type!=TileType.RESIDENTIAL || home.level==0)continue;
                 int id=hx*H+hy,best=Integer.MAX_VALUE;
-                for(int d=0;d<4;d++) {
-                    int nx=hx+dx(d),ny=hy+dy(d);
-                    if(road(city,nx,ny) && distance[nx*H+ny]>=0)best=Math.min(best,distance[nx*H+ny]);
-                }
+                best=CityRoads.accessDistance(city,hx,hy,distance);
                 if(best!=Integer.MAX_VALUE){distances[id]=best;homes.add(id);}
             }
             Collections.sort(homes,new Comparator<Integer>() {

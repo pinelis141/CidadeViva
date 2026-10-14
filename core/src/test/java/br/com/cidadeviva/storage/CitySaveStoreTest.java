@@ -60,6 +60,7 @@ public final class CitySaveStoreTest {
             ByteArrayOutputStream latest=new ByteArrayOutputStream();
             CityPersistence.save(day2,latest);
             Files.write(new File(interrupted.getPath()+".tmp").toPath(),latest.toByteArray());
+            ok(interruptedStore.load().city.day()==day2.day(),"latest valid temporary wins even before primary rotation");
             ok(interrupted.renameTo(new File(interrupted.getPath()+".bak")),"simulate save rotation crash");
             ok(interruptedStore.hasAnySave(),"interrupted state recognized");
             ok(interruptedStore.load().city.day()==day2.day(),"recover latest temp rather than old backup");
@@ -73,6 +74,9 @@ public final class CitySaveStoreTest {
             Files.write(new File(orphan.getPath()+".tmp").toPath(),new byte[]{1});
             try {orphanStore.load();throw new AssertionError("corrupt temp silently erased");}
             catch(java.io.IOException expected){checks++;}
+            File preRotation=new File(dir,"pre-rotation.cvt");CitySaveStore preStore=new CitySaveStore(preRotation);preStore.save(day1);
+            Files.write(new File(preRotation.getPath()+".tmp").toPath(),new byte[]{1,2});
+            ok(preStore.load().city.day()==day1.day(),"incomplete temporary cannot mask healthy primary");
             // Invalid/truncated data must not be interpreted as a valid game.
             ByteArrayOutputStream out=new ByteArrayOutputStream();
             CityPersistence.save(day2,out);

@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * Road-network commuting simulation. No random agents or hidden saved state:
@@ -24,6 +25,10 @@ public final class CityMobility {
     public final int averageCommuteSteps;
     /** Road tiles with sustained equivalent daily traffic above capacity. */
     public final int congestedRoads;
+    public final int transitRiders;
+    public final CityTransit transit;
+    private final int[] networkRiders;
+    public int ridersInNetwork(int network){return network<networkRiders.length?networkRiders[network]:0;}
     private final int[] roadTraffic;
     private final int[] homeEmployment, workplaceWorkers;
 
@@ -41,7 +46,8 @@ public final class CityMobility {
         Offer(int job,int distance,int road) {this.job=job;this.distance=distance;this.road=road;}
     }
     private CityMobility(int employed,int commerce,int industry,int accessible,int reachable,
-                         int jobCapacity,int reachableCapacity,long weightedDistance,int[] roads,int[] homeEmployment,int[] workplaceWorkers) {
+                         int jobCapacity,int reachableCapacity,long weightedDistance,int[] roads,int[] homeEmployment,int[] workplaceWorkers,CityTransit transit,int transitRiders,int[] networkRiders) {
+        this.transit=transit;this.transitRiders=transitRiders;this.networkRiders=networkRiders;
         this.employed=employed;
         this.commercialWorkers=commerce;
         this.industrialWorkers=industry;
@@ -61,21 +67,24 @@ public final class CityMobility {
     public int employedAt(int x,int y) {return homeEmployment[x*H+y];}
     public int workersAt(int x,int y) {return workplaceWorkers[x*H+y];}
     private static int nearRoads(City city,int x,int y,int[] out) {
-        int n=0;
-        for(int d=0;d<4;d++) {
-            int nx=x+DX[d],ny=y+DY[d];
-            Tile t=city.tile(nx,ny);
-            if(t!=null&&t.type==TileType.ROAD)out[n++]=nx*H+ny;
-        }
-        return n;
+        int[] entries=CityRoads.entries(city,x,y);System.arraycopy(entries,0,out,0,entries.length);return entries.length;
+    }
+    private static final class Step implements Comparable<Step>{
+        final int id,cost;Step(int id,int cost){this.id=id;this.cost=cost;}
+        public int compareTo(Step o){int c=Integer.compare(cost,o.cost);return c!=0?c:Integer.compare(id,o.id);}
     }
     public static CityMobility analyze(City city) {return analyze(city,CityUtilities.analyze(city));}
     public static CityMobility analyze(City city,CityUtilities utilities) {
+        CityTransit transit=CityTransit.analyze(city,utilities);
+        CityMobility free=allocate(city,utilities,transit,null);
+        return free.congestedRoads==0?free:allocate(city,utilities,transit,free.roadTraffic);
+    }
+    private static CityMobility allocate(City city,CityUtilities utilities,CityTransit transit,int[] previousTraffic) {
         List<Building> homes=new ArrayList<>(),jobs=new ArrayList<>();
         int accessible=0,jobCapacity=0;
         for(int x=0;x<W;x++)for(int y=0;y<H;y++) {
             Tile tile=city.tile(x,y);
-            if(tile.level<1||!tile.type.isZone()||!city.hasRoad(x,y))continue;
+            if(tile.fireDays>0||tile.level<1||!tile.type.isZone()||!city.hasRoad(x,y))continue;
             if(tile.type==TileType.RESIDENTIAL) {
                 int people=tile.level*12;
                 accessible+=people;
@@ -93,28 +102,26 @@ public final class CityMobility {
         boolean[] reachableJobs=new boolean[jobs.size()];
         // Reuse bounded arrays, avoiding per-home allocations of 2304 nodes.
         int[] distance=new int[N],parent=new int[N],queue=new int[N];
-        int[] entryRoads=new int[4],jobRoads=new int[4];
+        int[] entryRoads=new int[8],jobRoads=new int[8];
+        int[] seats=transit.availableSeats(),networkRiders=new int[seats.length];int transitRiders=0;
         List<Offer> offers=new ArrayList<>();
         for(Building home:homes) {
             Arrays.fill(distance,-1);
             Arrays.fill(parent,-1);
-            int head=0,tail=0;
+            PriorityQueue<Step> queueCost=new PriorityQueue<>();
             int startCount=nearRoads(city,home.x,home.y,entryRoads);
-            for(int i=0;i<startCount;i++) {
-                int start=entryRoads[i];
-                if(distance[start]!=-1)continue;
-                distance[start]=0;queue[tail++]=start;
-            }
-            while(head<tail) {
-                int p=queue[head++],steps=distance[p];
-                if(steps>=MAX_COMMUTE_STEPS)continue;
+            int homeNetwork=transit.networkAt(home.x,home.y);
+            for(int i=0;i<startCount;i++){int start=entryRoads[i];if(distance[start]>=0)continue;distance[start]=0;queueCost.add(new Step(start,0));}
+            while(!queueCost.isEmpty()) {
+                Step step=queueCost.remove();int p=step.id,steps=step.cost;if(distance[p]!=steps)continue;
+                if(steps>=(homeNetwork>0?48:MAX_COMMUTE_STEPS))continue;
                 int x=p/H,y=p%H;
                 for(int d=0;d<4;d++) {
                     int nx=x+DX[d],ny=y+DY[d];
-                    if(nx<0||nx>=W||ny<0||ny>=H)continue;
+                    if(!CityRoads.road(city,nx,ny))continue;
                     int next=nx*H+ny;
-                    if(distance[next]!=-1||city.tile(nx,ny).type!=TileType.ROAD)continue;
-                    distance[next]=steps+1;parent[next]=p;queue[tail++]=next;
+                    int cost=steps+1+(previousTraffic==null?0:Math.min(4,previousTraffic[next]/80));
+                    if(distance[next]<0||cost<distance[next]){distance[next]=cost;parent[next]=p;queueCost.add(new Step(next,cost));}
                 }
             }
             offers.clear();
@@ -128,7 +135,7 @@ public final class CityMobility {
                         bestDist=d;bestRoad=road;
                     }
                 }
-                if(bestRoad>=0&&bestDist<=MAX_COMMUTE_STEPS) {
+                if(bestRoad>=0&&bestDist<=((homeNetwork>0 && transit.networkAt(job.x,job.y)==homeNetwork && seats[homeNetwork]>0)?48:MAX_COMMUTE_STEPS)) {
                     reachableJobs[i]=true;
                     offers.add(new Offer(i,bestDist,bestRoad));
                 }
@@ -146,18 +153,23 @@ public final class CityMobility {
                 if(available==0)break;
                 if(job.remaining==0)continue;
                 int workers=Math.min(available,job.remaining);
+                boolean bus=homeNetwork>0&&transit.networkAt(job.x,job.y)==homeNetwork;
+                if(offer.distance>MAX_COMMUTE_STEPS)workers=bus?Math.min(workers,seats[homeNetwork]):0;
+                int riders=bus?Math.min(workers,seats[homeNetwork]):0;
+                if(bus){seats[homeNetwork]-=riders;networkRiders[homeNetwork]+=riders;}
+                transitRiders+=riders;
                 available-=workers;job.remaining-=workers;employed+=workers;
                 homeEmployment[home.id]+=workers;workplaceWorkers[job.id]+=workers;
                 if(job.type==TileType.COMMERCIAL)commerce+=workers;else industry+=workers;
                 commuteSum+=(long)workers*(offer.distance+2);
                 // Count actual commute paths for traffic visualization and metrics.
                 int road=offer.road;
-                while(road>=0) {flows[road]+=workers;road=parent[road];}
+                while(road>=0) {flows[road]+=workers-riders+(riders+11)/12;road=parent[road];}
             }
         }
         int reachableCapacity=0;
         for(int j=0;j<jobs.size();j++)if(reachableJobs[j])reachableCapacity+=jobs.get(j).capacity;
         return new CityMobility(employed,commerce,industry,accessible,reachable,
-            jobCapacity,reachableCapacity,commuteSum,flows,homeEmployment,workplaceWorkers);
+            jobCapacity,reachableCapacity,commuteSum,flows,homeEmployment,workplaceWorkers,transit,transitRiders,networkRiders);
     }
 }

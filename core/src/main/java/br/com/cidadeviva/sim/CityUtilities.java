@@ -14,13 +14,18 @@ public final class CityUtilities {
     public final int maintenance;
     public final boolean powerEnabled,waterEnabled;
     private final City city;
+    private final int[][] needs=new int[2][N];
+    private final boolean[] burning=new boolean[N];
+    private final int[] homes=new int[N];
     private CityUtilities(City city) {
         this.city=city;powerEnabled=city.powerEnabled();waterEnabled=city.waterEnabled();
         int cost=0;
         for(int x=0;x<City.WIDTH;x++)for(int y=0;y<H;y++) {
             TileType type=city.tile(x,y).type;
             if(type.isUtility())cost+=upkeep(type);
-            for(int k=0;k<2;k++)demands[k]+=need(city.tile(x,y),k);
+            burning[x*H+y]=city.tile(x,y).fireDays>0;
+            homes[x*H+y]=type==TileType.RESIDENTIAL?city.tile(x,y).level*12:0;
+            for(int k=0;k<2;k++){needs[k][x*H+y]=need(city.tile(x,y),k);demands[k]+=needs[k][x*H+y];}
         }
         maintenance=cost;
         distribute(0);distribute(1);
@@ -44,7 +49,7 @@ public final class CityUtilities {
             if(city.tile(x,y).type!=source || !operates(source,x,y))continue;
             int remaining=capacity(source);capacities[kind]+=remaining;
             Arrays.fill(distance,-1);int head=0,tail=0;
-            for(int d=0;d<4;d++) {int nx=x+dx(d),ny=y+dy(d);if(road(nx,ny)){int id=nx*H+ny;distance[id]=0;queue[tail++]=id;}}
+            for(int id:CityRoads.entries(city,x,y)){distance[id]=0;queue[tail++]=id;}
             while(head<tail) {
                 int id=queue[head++],rx=id/H,ry=id%H;
                 for(int d=0;d<4;d++) {int nx=rx+dx(d),ny=ry+dy(d);if(!road(nx,ny))continue;int next=nx*H+ny;if(distance[next]<0){distance[next]=distance[id]+1;queue[tail++]=next;}}
@@ -54,7 +59,7 @@ public final class CityUtilities {
             for(int cx=0;cx<City.WIDTH;cx++)for(int cy=0;cy<H;cy++) {
                 int id=cx*H+cy;
                 if(need(city.tile(cx,cy),kind)==0)continue;
-                for(int d=0;d<4;d++){int nx=cx+dx(d),ny=cy+dy(d);if(road(nx,ny) && distance[nx*H+ny]>=0)byDistance[id]=Math.min(byDistance[id],distance[nx*H+ny]);}
+                byDistance[id]=CityRoads.accessDistance(city,cx,cy,distance);
                 if(byDistance[id]!=Integer.MAX_VALUE)consumers.add(id);
             }
             Collections.sort(consumers,new Comparator<Integer>() {
@@ -81,12 +86,13 @@ public final class CityUtilities {
     public int demand(int kind){return demands[kind];}
     public int served(int kind){return totals[kind];}
     public boolean hasSupply(int x,int y) {
-        Tile tile=city.tile(x,y);
-        return (!powerEnabled || supplied[0][x*H+y]>=need(tile,0)) &&
-            (!waterEnabled || supplied[1][x*H+y]>=need(tile,1));
+        int id=x*H+y;
+        if(burning[id])return false;
+        return (!powerEnabled || supplied[0][id]>=needs[0][id]) &&
+            (!waterEnabled || supplied[1][id]>=needs[1][id]);
     }
     public int homePenalty(int x,int y) {
-        int people=city.tile(x,y).level*12;
+        int people=homes[x*H+y];
         if(people==0)return 0;
         return (powerEnabled?(people-supplied[0][x*H+y])*12/people:0)+
             (waterEnabled?(people-supplied[1][x*H+y])*18/people:0);

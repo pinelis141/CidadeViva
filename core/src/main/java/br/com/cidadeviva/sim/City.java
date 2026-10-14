@@ -17,10 +17,18 @@ public final class City {
     private int day = 1;
     private int lastIncome = 0;
     private int utilityFlags=0;
+    private int urbanFlags=0;
+    public int urbanFlags(){return urbanFlags;}
+    public boolean wasteEnabled(){return (urbanFlags&1)!=0;}
+    public boolean sewageEnabled(){return (urbanFlags&2)!=0;}
+    public boolean firesEnabled(){return (urbanFlags&4)!=0;}
+    public void setFiresEnabled(boolean enabled){if(enabled)urbanFlags|=4;else {urbanFlags&=~4;for(Tile[] column:tiles)for(Tile t:column)t.fireDays=0;}cachedEconomy=null;}
+    void invalidateEconomy(){cachedEconomy=null;}
+    void restoreUrbanFlags(int flags){urbanFlags=flags;cachedEconomy=null;}
     public boolean powerEnabled(){return (utilityFlags&1)!=0;}
     public boolean waterEnabled(){return (utilityFlags&2)!=0;}
     public int utilityFlags(){return utilityFlags;}
-    private void activateUtility(TileType type){if(type==TileType.POWER_PLANT)utilityFlags|=1;if(type==TileType.WATER_PUMP)utilityFlags|=2;}
+    private void activateUtility(TileType type){if(type==TileType.WASTE_CENTER)urbanFlags|=1;if(type==TileType.SEWAGE_PLANT)urbanFlags|=2;if(type==TileType.FIRE_STATION)urbanFlags|=4;if(type==TileType.POWER_PLANT)utilityFlags|=1;if(type==TileType.WATER_PUMP)utilityFlags|=2;}
     private CityEconomy cachedEconomy;
     // Per-city settings, persisted in CVT3. Existing CVT1/CVT2 cities default to 10%.
     private final int[] taxRates = {10, 10, 10};
@@ -42,6 +50,7 @@ public final class City {
         }
         public boolean isGrowth() {return toLevel>fromLevel;}
     }
+    void recordDamage(int x,int y,int from,int to){recentEvents.add(new GrowthEvent(x,y,tiles[x][y].type,from,to));}
     public List<GrowthEvent> recentEvents() {return publicEvents;}
     public List<CityMilestones.Milestone> recentMilestones() {return publicMilestones;}
 
@@ -50,8 +59,8 @@ public final class City {
 
     /** Distinct deterministic layouts per save slot; slot one preserves original map. */
     public City(int seed) {
-        int dx=seed==0?0:Math.floorMod(seed*13,9)-4;
-        int dy=seed==0?0:Math.floorMod(seed*7,9)-4;
+        int dx=seed==0?0:CityMath.floorMod(seed*13,9)-4;
+        int dy=seed==0?0:CityMath.floorMod(seed*7,9)-4;
         for (int x = 0; x < WIDTH; x++) for (int y = 0; y < HEIGHT; y++) {
             // Ilhas de água, faixas de mata; centro reservado para uma cidade inicial.
             // Deterministic connected lakes and groves; saves keep their existing terrain.
@@ -64,7 +73,7 @@ public final class City {
             double grove = Math.sin((x+dx)*0.31+1.8)*Math.cos((y+dy)*0.23+0.7)
                 + 0.24*Math.sin((x+y)*0.71);
             boolean forest = !center && grove > 0.59
-                && Math.floorMod((x*113+y*71+x*y*5),7)!=0;
+                && CityMath.floorMod((x*113+y*71+x*y*5),7)!=0;
             tiles[x][y] = new Tile(water ? TileType.WATER : (forest ? TileType.FOREST : TileType.GRASS));
         }
         // Centro inicial permite observar imediatamente como as casas crescem.
@@ -119,6 +128,12 @@ public final class City {
 
     public int cost(TileType type) {
         switch (type) {
+            case FIRE_STATION:return 1000;
+            case POLICE_STATION:return 900;
+            case WASTE_CENTER:return 800;
+            case SEWAGE_PLANT:return 1200;
+            case BUS_DEPOT:return 1200;
+            case BUS_STOP:return 80;
             case POWER_PLANT: return 2600;
             case WATER_PUMP: return 1800;
             case PARK: return 350;
@@ -154,12 +169,21 @@ public final class City {
     /** Reclaim half of the original public investment, never the developed building value. */
     public int demolitionRefund(int x,int y) {
         Tile t=tile(x,y);
-        return t==null?0:cost(t.type)/2;
+        return t==null?0:(cost(t.type)/2)*(t.block==0?1:4);
     }
 
     public int cashRunwayDays() {
-        int net=economy().net;
-        return net>=0?Integer.MAX_VALUE:money/-net;
+        // A finite loan cannot be forecast as a permanent expense: otherwise
+        // the safety pause can prevent the last affordable installment itself.
+        long operating=(long)economy().net+loanPayment(),cash=money,days=0;
+        if(loanBalance>0){
+            int full=loanBalance/loanInstallment,tail=loanBalance%loanInstallment;
+            long daily=operating-loanInstallment;
+            if(daily<0&&cash<-(daily*full))return (int)(cash/-daily);
+            cash=Math.min(Integer.MAX_VALUE,cash+daily*full);days+=full;
+            if(tail>0){long change=operating-tail;if(change<0&&cash<-change)return (int)days;cash=Math.min(Integer.MAX_VALUE,cash+change);days++;}
+        }
+        return operating>=0?Integer.MAX_VALUE:(int)Math.min(Integer.MAX_VALUE,days+cash/-operating);
     }
 
     public boolean needsBudgetPause() {return cashRunwayDays()<=7;}
@@ -174,7 +198,9 @@ public final class City {
             if (money < cost(type)) return "Dinheiro insuficiente";
             int refund=demolitionRefund(x,y);
             money=(int)Math.min(Integer.MAX_VALUE,(long)money+refund);
-            tiles[x][y] = new Tile(TileType.GRASS);
+            int block=existing.block;
+            if(block==0)tiles[x][y] = new Tile(TileType.GRASS);
+            else {int ax=(block-1)/HEIGHT,ay=(block-1)%HEIGHT;for(int nx=ax;nx<ax+2;nx++)for(int ny=ay;ny<ay+2;ny++)tiles[nx][ny]=new Tile(TileType.GRASS);}
             cachedEconomy=null;
             return "Terreno liberado";
         }
@@ -223,14 +249,24 @@ public final class City {
         }
     }
 
-    public BuildResult preview(List<BuildStroke.Cell> targets,TileType type) {
+    private LinkedHashSet<BuildStroke.Cell> resolvedTargets(List<BuildStroke.Cell> targets,TileType type){
         LinkedHashSet<BuildStroke.Cell> unique=new LinkedHashSet<>(targets);
+        if(type==TileType.GRASS)for(BuildStroke.Cell cell:targets){
+            Tile t=tile(cell.x,cell.y);if(t==null||t.block==0)continue;
+            int ax=(t.block-1)/HEIGHT,ay=(t.block-1)%HEIGHT;
+            for(int x=ax;x<ax+2;x++)for(int y=ay;y<ay+2;y++)unique.add(new BuildStroke.Cell(x,y));
+        }
+        return unique;
+    }
+    public List<BuildStroke.Cell> previewCells(List<BuildStroke.Cell> targets,TileType type){return new ArrayList<>(resolvedTargets(targets,type));}
+    public BuildResult preview(List<BuildStroke.Cell> targets,TileType type) {
+        LinkedHashSet<BuildStroke.Cell> unique=resolvedTargets(targets,type);
         int valid=0;
         long estimated=0;
         for (BuildStroke.Cell cell:unique)
             if (canBuild(cell.x,cell.y,type)) {
                 valid++;
-                estimated+=type==TileType.GRASS?-demolitionRefund(cell.x,cell.y):cost(type);
+                estimated+=type==TileType.GRASS?-cost(tile(cell.x,cell.y).type)/2:cost(type);
             }
         return new BuildResult(valid,unique.size()-valid,(int)Math.min(Integer.MAX_VALUE,estimated),estimated>money);
     }
@@ -240,7 +276,7 @@ public final class City {
         BuildResult estimate=preview(targets,type);
         if (estimate.insufficientFunds || estimate.built==0) return estimate;
         // Re-evaluate cells only after affordability, keeping this action all-or-nothing.
-        for (BuildStroke.Cell cell:new LinkedHashSet<>(targets)) {
+        for (BuildStroke.Cell cell:resolvedTargets(targets,type)) {
             if (canBuild(cell.x,cell.y,type)) tiles[cell.x][cell.y]=new Tile(type);
         }
         activateUtility(type);
@@ -268,7 +304,7 @@ public final class City {
     }
 
     public boolean hasRoad(int x,int y) {
-        return (isRoad(x+1,y) || isRoad(x-1,y) || isRoad(x,y+1) || isRoad(x,y-1));
+        return CityRoads.entries(this,x,y).length>0;
     }
     private boolean isRoad(int x,int y) {
         Tile tile = tile(x,y);
@@ -342,12 +378,12 @@ public final class City {
         int occupiedToday=0;
         // Different daily scan origins avoid growth always favouring the same
         // side of the map, while remaining deterministic across save reloads.
-        int originX=Math.floorMod(day*17,WIDTH);
-        int originY=Math.floorMod(day*23,HEIGHT);
+        int originX=CityMath.floorMod(day*17,WIDTH);
+        int originY=CityMath.floorMod(day*23,HEIGHT);
         for(int xi=0;xi<WIDTH;xi++) for(int yi=0;yi<HEIGHT;yi++) {
             int x=(originX+xi)%WIDTH, y=(originY+yi)%HEIGHT;
             Tile t=tiles[x][y];
-            if(!t.type.isZone()) continue;
+            if(!t.type.isZone()||!CityBlocks.anchor(this,x,y)||t.fireDays>0) continue;
             boolean accessible=hasRoad(x,y);
             int demand=report.demand(t.type);
             int localQuality=report.neighborhoods.satisfactionAt(x,y);
@@ -356,12 +392,19 @@ public final class City {
                     (accessible && demand<20 && lowDemandDays(t.type)>=12) || (unhealthy && day>=14))) {
                 float chance=!accessible?0.045f:unhealthy?0.035f:0.02f+(20-demand)*0.0015f;
                 if(growthRoll(day,x,y,17)<chance) {
-                    int from=t.level--;
+                    int from=t.level;CityBlocks.setLevel(this,x,y,t.level-1);
                     recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
                 }
                 continue;
             }
             if(!accessible || demand<24 || t.level>=3)continue;
+            if(t.block>0){
+                boolean ready=true;int ax=(t.block-1)/HEIGHT,ay=(t.block-1)%HEIGHT;
+                for(int nx=ax;nx<ax+2;nx++)for(int ny=ay;ny<ay+2;ny++)
+                    if(!report.utilities.hasSupply(nx,ny)||!report.civics.healthy(nx,ny)||
+                        (t.type==TileType.RESIDENTIAL&&(report.neighborhoods.satisfactionAt(nx,ny)<65||!report.services.readyForDensity(this,nx,ny))))ready=false;
+                if(!ready)continue;
+            }
             if(t.level>0 && !report.utilities.hasSupply(x,y))continue;
             if(t.type==TileType.RESIDENTIAL && (unhealthy ||
                 (t.level==2 && !report.services.readyForDensity(this,x,y)) ||
@@ -383,11 +426,14 @@ public final class City {
             if(report.qualityOfLife<45)rate*=0.55f;
             if(t.type==TileType.RESIDENTIAL)rate*=0.6f+localQuality/125f;
             if(growthRoll(day,x,y,0)<rate) {
-                int from=t.level++;
+                if(t.block>0&&!CityBlocks.readyForGrowth(this,x,y))continue;
+                int from=t.level;CityBlocks.setLevel(this,x,y,t.level+1);
                 if(from==0)occupiedToday++;
                 recentEvents.add(new GrowthEvent(x,y,t.type,from,t.level));
             }
         }
+        CityEmergencies.advance(this,report);
+        CityBlocks.formOne(this,report);
         cachedEconomy=null;
         recentMilestones.addAll(CityMilestones.crossed(populationBefore,residents()));
     }
@@ -400,7 +446,7 @@ public final class City {
         restore(incoming,restoredMoney,restoredDay,restoredIncome,rates,weakDays,0);
     }
     void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays,int flags) {
-        loanBalance=0;loanInstallment=0;
+        loanBalance=0;loanInstallment=0;urbanFlags=0;
         utilityFlags=flags;
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];

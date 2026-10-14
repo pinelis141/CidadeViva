@@ -1,9 +1,32 @@
 # Cidade Viva — Backlog mestre
 
-**Revisão:** 09/10/2026  
+**Revisão:** 14/10/2026
 **Repositório oficial:** `pinelis141/CidadeViva`  
 **Stack:** Java 17, libGDX, Gradle, Android (prioritário), desktop (secundário).  
 **Produto:** city builder isométrico original, single-player e offline, com progressão econômica, infraestrutura, serviços e evolução visual em pixel art. Sem reutilizar código, marca ou assets de TheoTown.
+
+## Estado atual — 0.8 Alpha 1
+
+Esta seção é a referência atual. As atualizações e marcos abaixo registram o histórico do plano e não devem ser lidos como lista atual de ausências.
+
+| Frente | Estado de implementação | Aceite |
+| --- | --- | --- |
+| Simulação R/C/I, empregos, trajetos, impostos e evolução | Implementado | Regressões automatizadas; equilíbrio mais recente ainda em teste de aparelho |
+| Qualidade local, poluição, reclamações e valorização | Implementado como modelo agregado | QA Android da integração pendente |
+| Parques, escola e saúde | Implementado; versão 0.6 validada pelo usuário | Preservados na integração |
+| Energia, água, lixo e esgoto | Implementado com capacidade e atendimento por ruas | QA Android da integração pendente |
+| Bombeiros, incêndios opcionais e polícia | Implementado como modelo agregado | QA Android pendente |
+| Prédios 2×2, nove desenhos e evolução conjunta | Implementado | Recursos prospectivos, footprint e demolição testados; QA visual pendente |
+| Camadas do mapa e classes sociais | Implementado | Controles testados em retrato/paisagem; QA visual pendente |
+| Ônibus e trânsito | Garagem + pontos, capacidade por rede, passageiros empregados, busca ponderada e alcance de serviços | Modelo agregado; sem linhas/horários individuais |
+| Balanceamento e empréstimos | Implementado; previsão de quitação corrigida nesta versão | Regressões; validação de ritmo no aparelho pendente |
+| Salvamentos e auditoria | CVT7, leitura CVT1–CVT6, temporários/backup/CRC, três slots | Regressores e cenários longos; QA físico pendente |
+
+Ainda fora desta entrega: prédios 3×3, editor de linhas de ônibus, veículos/cidadãos individuais com IA, seleção de tamanhos/mapas, ferramentas avançadas de terreno, tutorial interativo, áudio, clima/dia-noite e release para publicação. Marcos populacionais existem; desbloqueios aprofundados continuam parciais. Próxima prioridade após esta versão: validar o conjunto em Android e medir desempenho/ritmo antes de expandir conteúdo.
+
+Detalhes: [sistemas e regras](CIDADE-INTEGRADA-0.8-ALPHA1.md) e [auditoria](AUDITORIA-0.8-ALPHA1.md).
+
+## Histórico de execução
 
 ## Atualização — 0.4.0-alpha1 (vida urbana)
 

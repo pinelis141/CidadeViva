@@ -42,15 +42,20 @@ public final class CityLoanTest {
         City tail=load(bytes(partial));ok(tail.loanBalance()==35,"partial payment survives reload");
         tail.restoreLoan(0,0);ok(tail.loanPayment()==0,"zero balance has no payment");
         byte[] current=bytes(new City());
-        byte[] v5=Arrays.copyOf(current,current.length-8);v5[3]='5';crc(v5);
+        byte[] v5=LegacyCitySave.bytes(new City(),5);
         City migrated=load(v5);ok(migrated.loanBalance()==0&&migrated.money()==15000,"CVT5 migration starts debt-free without changing cash");
-        byte[] bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-12,-1);rejects(bad);
-        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-8,55);rejects(bad);
-        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-12,999999).putInt(bad.length-8,55);rejects(bad);
-        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-12,100).putInt(bad.length-8,0);rejects(bad);
+        byte[] bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-13,-1);rejects(bad);
+        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-9,55);rejects(bad);
+        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-13,999999).putInt(bad.length-9,55);rejects(bad);
+        bad=current.clone();ByteBuffer.wrap(bad).putInt(bad.length-13,100).putInt(bad.length-9,0);rejects(bad);
         City cap=new City();cap.restore(map,Integer.MAX_VALUE,1,0);
         ok(!cap.borrow(CityLoan.LARGE)&&cap.money()==Integer.MAX_VALUE,"credit cannot overflow treasury");
         ok(!new City().borrow(null),"invalid offer rejected");
+        City finite=new City();finite.restore(map,55,1,0);finite.restoreLoan(55,55);
+        ok(!finite.needsBudgetPause(),"affordable final installment does not trigger a permanent safety pause");
+        finite.nextDay();ok(finite.loanBalance()==0&&finite.money()==0,"final affordable payment can complete");
+        City transientDeficit=new City();transientDeficit.borrow(CityLoan.LARGE);
+        ok(transientDeficit.economy().net<0&&transientDeficit.cashRunwayDays()==Integer.MAX_VALUE,"finite debt is not forecast as an endless operating deficit");
         System.out.println("OK: "+checks+" loan offers, payments, arrears, payoff, bankruptcy, CVT5 migration, CVT6 replay and corrupt saves.");
     }
 }

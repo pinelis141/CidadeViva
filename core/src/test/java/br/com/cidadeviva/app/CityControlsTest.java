@@ -113,6 +113,14 @@ public final class CityControlsTest {
             input.keyDown(Input.Keys.BACK);
             check((boolean)get(game,"economyVisible")&&!(boolean)get(game,"loansPage"),"back returns from loan offers to budget");
             input.keyDown(Input.Keys.BACK);
+            input.keyDown(Input.Keys.E);
+            int layersHeaderY=Math.round((float)get(game,"h")-ey-519*loanScale);
+            economyTap.invoke(game,550,layersHeaderY);
+            check((boolean)get(game,"layersPage"),"budget opens layer selector");
+            economyTap.invoke(game,365,Math.round((float)get(game,"h")-ey-85*loanScale));
+            check(borrowingCity.firesEnabled()&&slots.store(slots.active()).load().city.firesEnabled(),"optional fires switch persists immediately");
+            economyTap.invoke(game,365,Math.round((float)get(game,"h")-ey-85*loanScale));
+            input.keyDown(Input.Keys.BACK);input.keyDown(Input.Keys.BACK);
         } finally {
             try(java.util.stream.Stream<java.nio.file.Path> files=java.nio.file.Files.walk(dir.toPath())) {
                 files.sorted(java.util.Comparator.reverseOrder()).forEach(path->{
@@ -135,6 +143,29 @@ public final class CityControlsTest {
         check(get(game,"selected")==br.com.cidadeviva.sim.TileType.POWER_PLANT,"generator can be selected");
         input.keyDown(Input.Keys.NUM_6);input.touchDown(365,665,0,0);input.touchUp(365,665,0,0);
         check(get(game,"selected")==br.com.cidadeviva.sim.TileType.WATER_PUMP,"water source can be selected");
+        for(int i=0;i<6;i++){
+            input.keyDown(Input.Keys.NUM_6);
+            input.touchDown(500,735,0,0);input.touchUp(500,735,0,0);
+            check((int)get(game,"servicePage")==1,"second service page opens");
+            int sy=970-(205+408-i*68+30);
+            input.touchDown(365,sy,0,0);input.touchUp(365,sy,0,0);
+            check(get(game,"selected")==br.com.cidadeviva.sim.CityServices.BUILD_MENU[5+i],"new civic service selected from its own row");
+        }
+        for(int[] size:new int[][]{{730,970},{970,730},{640,360}}){
+            game.resize(size[0],size[1]);float scale=(float)get(game,"uiScale"),ew=Math.min(size[0]-24*scale,560*scale),ex=(size[0]-ew)/2,ey=(size[1]-558*scale)/2;
+            for(int i=0;i<br.com.cidadeviva.sim.CityLayer.values().length;i++){
+                input.keyDown(Input.Keys.E);
+                int headerX=Math.round(ex+ew-80*scale),headerY=Math.round(size[1]-ey-519*scale);
+                input.touchDown(headerX,headerY,0,0);input.touchUp(headerX,headerY,0,0);
+                check((boolean)get(game,"layersPage"),"layer menu accessible in portrait and landscape");
+                float cw=(ew-42*scale)/2;
+                int lx=Math.round(ex+16*scale+(i%2)*(cw+10*scale)+cw/2),ly=Math.round(size[1]-ey-(410-i/2*52+22)*scale);
+                int funds=((City)get(game,"city")).money();
+                input.touchDown(lx,ly,0,0);input.touchUp(lx,ly,0,0);
+                check(get(game,"currentLayer")==br.com.cidadeviva.sim.CityLayer.values()[i]&&!(boolean)get(game,"economyVisible"),"layer choice shows map without touch leaking through");
+                check(((City)get(game,"city")).money()==funds,"diagnostic selection never changes treasury");
+            }
+        }
         font.dispose();
         // Real UI safeguard must stop accelerated time and explain the pause.
         City risk=new City();

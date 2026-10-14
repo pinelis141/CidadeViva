@@ -31,6 +31,8 @@ jobs:
         run: bash ./tools/test-core.sh
       - name: Testar controles e ciclo de vida
         run: gradle :core:auditControls :lwjgl3:installDist --no-daemon
+      - name: Auditar APIs e recursos Android
+        run: gradle :android:lintDebug --no-daemon
       - name: Compilar APK de teste
         run: gradle :android:assembleDebug --no-daemon --stacktrace
       - name: Confirmar atlas incluido no APK

@@ -36,10 +36,6 @@ public final class CitySaveStore {
 
     public Loaded load() throws IOException {
         IOException issue = null;
-        if (primary.exists()) {
-            try { return new Loaded(read(primary), false); }
-            catch (IOException e) { issue = e; }
-        }
         // A crash between rotating primary and promoting a fully written temp
         // must recover the latest verified state, not initialize a fresh city.
         if (temporary.exists()) {
@@ -48,6 +44,10 @@ public final class CitySaveStore {
                 if (issue!=null)e.addSuppressed(issue);
                 issue=e;
             }
+        }
+        if (primary.exists()) {
+            try { return new Loaded(read(primary), false); }
+            catch (IOException e) { issue = e; }
         }
         if (backup.exists()) {
             try { return new Loaded(read(backup), true); }

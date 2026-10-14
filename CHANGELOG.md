@@ -1,3 +1,10 @@
+## 0.8.0-alpha1 — Cidade integrada
+
+- Seis frentes do backlog: 2×2; camadas; classes e valorização; segurança/incêndios; saneamento; transporte/congestionamento.
+- CVT7, migração de formatos anteriores e auditoria completa documentada.
+- Corrigidos recuperação de temporários, APIs Android 23, texturas após perda de contexto e previsão da quitação de empréstimos.
+- Regressões, controles e cenários longos; lint Android adicionado antes da geração do APK.
+
 ## 0.7.0-alpha3 — Empréstimos
 
 - ECON → EMPRÉSTIMO: três ofertas com juros totais fixos e confirmação explícita.

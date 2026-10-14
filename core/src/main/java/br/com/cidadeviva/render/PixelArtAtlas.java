@@ -1,5 +1,7 @@
 package br.com.cidadeviva.render;
 
+import br.com.cidadeviva.sim.CityMath;
+
 import br.com.cidadeviva.sim.TileType;
 import br.com.cidadeviva.sim.BuildingAppearance;
 import com.badlogic.gdx.Gdx;
@@ -35,14 +37,14 @@ public final class PixelArtAtlas {
             default: {
                 // Coherent patches, scattered wildflowers and worn grass, not a
                 // different green on each successive checkerboard diamond.
-                int clusters=Math.floorMod((x/4)*41+(y/5)*17+(x/4)*(y/5)*3,13);
-                if (clusters==3 || clusters==8) return 67+Math.floorMod(x*5+y*7,4);
-                return Math.floorMod((x/5)*17+(y/5)*29,3);
+                int clusters=CityMath.floorMod((x/4)*41+(y/5)*17+(x/4)*(y/5)*3,13);
+                if (clusters==3 || clusters==8) return 67+CityMath.floorMod(x*5+y*7,4);
+                return CityMath.floorMod((x/5)*17+(y/5)*29,3);
             }
         }
     }
     public static int treeSprite(int x,int y) {
-        int variant=Math.floorMod(x*13+y*29+(x/3)*7,9);
+        int variant=CityMath.floorMod(x*13+y*29+(x/3)*7,9);
         return variant<3?24+variant:61+(variant-3);
     }
     public static int buildingSprite(TileType type,int level,int x,int y) {
