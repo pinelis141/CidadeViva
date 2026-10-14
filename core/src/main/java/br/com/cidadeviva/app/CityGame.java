@@ -1,6 +1,7 @@
 package br.com.cidadeviva.app;
 
 import br.com.cidadeviva.sim.City;
+import br.com.cidadeviva.sim.CityLoan;
 import br.com.cidadeviva.sim.CityServices;
 import br.com.cidadeviva.sim.CityUtilities;
 import br.com.cidadeviva.render.ServiceArt;
@@ -68,6 +69,8 @@ public final class CityGame extends ApplicationAdapter {
     private boolean savesReady = false;
     private boolean slotsVisible = false;
     private boolean economyVisible = false;
+    private boolean loansPage=false;
+    private int selectedLoan=-1;
     private boolean inspectorVisible = false;
     private int selectedSlot = -1;
     private CitySlots.SlotInfo[] slotInfo = new CitySlots.SlotInfo[CitySlots.COUNT];
@@ -192,6 +195,7 @@ public final class CityGame extends ApplicationAdapter {
             simClock += delta * simulationSpeed;
             while (simClock >= SECONDS_PER_DAY) {
                 simClock -= SECONDS_PER_DAY;
+                if(pauseForBudgetIfNeeded())break;
                 city.nextDay();
                 if(!city.recentMilestones().isEmpty()) {
                     milestoneBanner=city.recentMilestones().get(city.recentMilestones().size()-1);
@@ -211,6 +215,7 @@ public final class CityGame extends ApplicationAdapter {
                 // five in-game days unless a building changed to limit allocations.
                 if(!city.recentEvents().isEmpty() || city.day()%5==0)refreshActivity();
                 if (city.day() % 15 == 0) save(false);
+                if(pauseForBudgetIfNeeded())break;
             }
         }
         // Matt forest-green fog surrounds map bounds; avoids pure black corners.
@@ -692,7 +697,7 @@ public final class CityGame extends ApplicationAdapter {
         for(int i=0;i<HudLayout.TOOLS;i++) {
             float x=i*tw;
             centered(i==5 && (selected.isService() || selected.isUtility())?(selected==TileType.POWER_PLANT?"ENERGIA":selected==TileType.WATER_PUMP?"AGUA":selected==TileType.CLINIC?"SAUDE":CityServices.name(selected)):toolNames[i],x,tw,46*u,1.30f,white);
-            centered("R$ "+city.cost(i==5 && (selected.isService() || selected.isUtility())?selected:tools[i]),x,tw,26*u,0.96f,muted);
+            centered(i==4?"DEVOLVE 50%":"R$ "+city.cost(i==5 && (selected.isService() || selected.isUtility())?selected:tools[i]),x,tw,26*u,0.96f,muted);
         }
         if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
             !slotsVisible && !economyVisible && !servicesVisible)drawInspector(u,eco);
@@ -706,7 +711,7 @@ public final class CityGame extends ApplicationAdapter {
         }
         if(!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
             City.BuildResult p=city.preview(new ArrayList<>(brushCells),selected);
-            label("AREA "+p.built+"  CUSTO R$ "+p.cost+
+            label("AREA "+p.built+(p.cost<0?"  DEVOLVE R$ "+(-(long)p.cost):"  CUSTO R$ "+p.cost)+
                 (p.ignored>0?"  |  BLOQUEADAS "+p.ignored:""),13*u,toastY+18*u,
                 1.08f,p.insufficientFunds?bad:good,w-28*u);
         }
@@ -805,6 +810,7 @@ public final class CityGame extends ApplicationAdapter {
         shapes.rect(0,0,w,h);
         shapes.setColor(rgb(29,51,63));shapes.rect(x,y,ww,558*u);
         shapes.setColor(rgb(94,177,180));shapes.rect(x,y+553*u,ww,5*u);
+        if(loansPage){drawLoansShapes(u);return;}
         // Tax cards keep touch coordinates unchanged from previous versions.
         Color[] colors={rgb(117,218,147),rgb(115,191,232),rgb(240,184,104)};
         for(int i=0;i<3;i++) {
@@ -816,10 +822,12 @@ public final class CityGame extends ApplicationAdapter {
         shapes.setColor(rgb(51,76,85));
         shapes.rect(x+17*u,y+177*u,ww-34*u,2*u);
         shapes.rect(x+17*u,y+83*u,ww-34*u,2*u);
-        card(x+16*u,y+13*u,ww-32*u,47*u,rgb(111,199,148),false);
+        card(x+16*u,y+13*u,(ww-40*u)/2,47*u,rgb(111,199,148),false);
+        card(x+ww/2+4*u,y+13*u,(ww-40*u)/2,47*u,rgb(111,199,148),false);
     }
 
     private void drawEconomyText(float u,CityEconomy report) {
+        if(loansPage){drawLoansText(u,report);return;}
         float x=econX(u),y=econY(u),ww=econW(u);
         Color white=rgb(236,246,239),sub=rgb(168,198,205);
         label("ECONOMIA",x+21*u,y+520*u,1.62f,white,ww-42*u);
@@ -849,18 +857,67 @@ public final class CityGame extends ApplicationAdapter {
         label("DESPESAS",x+22*u,y+118*u,1.12f,rgb(244,183,113),ww-44*u);
         label("R$ "+report.expenses+" / dia",x+ww*0.63f,y+118*u,
             1.18f,white,ww*0.34f);
-        label("Ruas "+report.roadMaintenance+" | Predios "+report.zoneMaintenance+" | Serv./Redes "+report.serviceMaintenance,
+        label("Ruas "+report.roadMaintenance+" | Predios "+report.zoneMaintenance+" | Serv. "+report.serviceMaintenance+" | Parcela "+report.loanPayment,
             x+22*u,y+97*u,0.94f,sub,ww-44*u);
-        label("SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
+        label(report.net<0?"CAIXA: "+city.cashRunwayDays()+" DIAS":"SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
         label((report.net>=0?"+":"")+"R$ "+report.net,x+ww*0.55f,y+70*u,1.22f,
             report.net>=0?rgb(131,228,170):rgb(253,151,132),ww*0.41f);
-        centered("FECHAR",x+16*u,ww-32*u,y+43*u,1.18f,white);
+        centered("EMPRESTIMO",x+16*u,(ww-40*u)/2,y+43*u,1.04f,white);
+        centered("FECHAR",x+ww/2+4*u,(ww-40*u)/2,y+43*u,1.18f,white);
+    }
+
+    private void drawLoansShapes(float u){
+        float x=econX(u),y=econY(u),ww=econW(u);
+        for(int i=0;i<CityLoan.values().length;i++)
+            card(x+16*u,y+(300-i*100)*u,ww-32*u,88*u,rgb(111,199,148),selectedLoan==i);
+        card(x+16*u,y+13*u,(ww-40*u)/2,47*u,rgb(111,199,148),false);
+        card(x+ww/2+4*u,y+13*u,(ww-40*u)/2,47*u,rgb(111,199,148),selectedLoan>=0);
+    }
+    private void drawLoansText(float u,CityEconomy report){
+        float x=econX(u),y=econY(u),ww=econW(u);
+        Color white=rgb(236,246,239),sub=rgb(168,198,205);
+        label("EMPRESTIMOS",x+21*u,y+520*u,1.5f,white,ww-42*u);
+        label("CAIXA R$ "+city.money()+" | DIVIDA R$ "+city.loanBalance(),x+21*u,y+488*u,1.05f,white,ww-42*u);
+        label("PARCELA R$ "+city.loanPayment()+"/dia | RESTAM "+city.loanPaymentsLeft(),x+21*u,y+465*u,1.0f,sub,ww-42*u);
+        label(city.loanBalance()>0?"Quite a divida atual antes de contratar outra.":"Escolha uma oferta e confirme a contratacao.",x+21*u,y+437*u,1.0f,sub,ww-42*u);
+        label("Juros totais fixos. Primeira parcela no proximo dia.",x+21*u,y+414*u,0.92f,sub,ww-42*u);
+        for(int i=0;i<CityLoan.values().length;i++){
+            CityLoan offer=CityLoan.values()[i];float cy=y+(300-i*100)*u;
+            label("RECEBER R$ "+offer.principal+" | JUROS "+offer.interestPercent+"%",x+28*u,cy+65*u,1.12f,white,ww-56*u);
+            label(offer.days+" PARCELAS DE R$ "+offer.payment+" / DIA",x+28*u,cy+42*u,1.0f,sub,ww-56*u);
+            label("TOTAL R$ "+offer.total+" | SALDO APOS: R$ "+(report.net-offer.payment)+"/dia",x+28*u,cy+19*u,0.97f,sub,ww-56*u);
+        }
+        label("Sem caixa, o valor nao pago continua devido.",x+21*u,y+77*u,0.92f,sub,ww-42*u);
+        centered("VOLTAR",x+16*u,(ww-40*u)/2,y+43*u,1.1f,white);
+        centered(city.loanBalance()>0?"EM ANDAMENTO":selectedLoan<0?"SELECIONE":"CONFIRMAR",x+ww/2+4*u,(ww-40*u)/2,y+43*u,1.03f,white);
+    }
+    private void loansTap(int sx,float py,float u){
+        float x=econX(u),y=econY(u),ww=econW(u);
+        if(py>=y+13*u && py<=y+60*u){
+            if(sx>=x+16*u && sx<=x+ww/2-4*u){loansPage=false;selectedLoan=-1;return;}
+            if(sx>=x+ww/2+4*u && sx<=x+ww-16*u && selectedLoan>=0 && city.borrow(CityLoan.values()[selectedLoan])){
+                selectedLoan=-1;
+                save(false);
+                refreshActivity();
+            }
+            return;
+        }
+        if(city.loanBalance()>0)return;
+        for(int i=0;i<CityLoan.values().length;i++){
+            float cy=y+(300-i*100)*u;
+            if(sx>=x+16*u && sx<=x+ww-16*u && py>=cy && py<=cy+88*u){selectedLoan=i;return;}
+        }
     }
     private void economyTap(int sx,int sy) {
         float u=uiScale, x=econX(u),y=econY(u),ww=econW(u);
         float py=h-sy;
         if(sx<x || sx>x+ww || py<y || py>y+558*u) {economyVisible=false;return;}
-        if(py<=y+61*u) {economyVisible=false;return;}
+        if(loansPage){loansTap(sx,py,u);return;}
+        if(py>=y+13*u && py<=y+60*u) {
+            if(sx>=x+16*u && sx<=x+ww/2-4*u){loansPage=true;selectedLoan=-1;}
+            else if(sx>=x+ww/2+4*u && sx<=x+ww-16*u)economyVisible=false;
+            return;
+        }
         for(int i=0;i<3;i++) {
             float rowY=y+(356-i*83)*u;
             if(py<rowY+13*u || py>rowY+61*u)continue;
@@ -1029,6 +1086,14 @@ public final class CityGame extends ApplicationAdapter {
         }
     }
 
+    private boolean pauseForBudgetIfNeeded() {
+        if(!city.needsBudgetPause())return false;
+        simulationPaused=true;
+        simClock=0;
+        message("CAIXA BAIXO: tempo pausado. Revise o saldo em ECON.");
+        return true;
+    }
+
     private void message(String text) { toast=text;toastClock=3f; }
 
     private void save(boolean feedback) {
@@ -1124,7 +1189,9 @@ public final class CityGame extends ApplicationAdapter {
             !city.canBuild(x,y,selected)) {
             message(city.zoneDescription(x,y));
         } else {
+            int refund=selected==TileType.GRASS && city.canBuild(x,y,selected)?city.demolitionRefund(x,y):0;
             String result=city.build(x,y,selected);
+            if(refund>0)result+=" | Devolucao R$ "+refund;
             if (selected.isZone() && !city.hasRoad(x,y) && city.tile(x,y).type==selected)
                 result="Zona criada. SEM RUA ADJACENTE!";
             message(result);
@@ -1194,7 +1261,7 @@ public final class CityGame extends ApplicationAdapter {
 
     private void openEconomy() {
         resetGestures();
-        helpVisible=false;slotsVisible=false;servicesVisible=false;inspectorVisible=false;economyVisible=true;
+        helpVisible=false;slotsVisible=false;servicesVisible=false;inspectorVisible=false;economyVisible=true;loansPage=false;selectedLoan=-1;
     }
 
     private void activateAction(int index) {
@@ -1379,7 +1446,7 @@ public final class CityGame extends ApplicationAdapter {
                 resetGestures();
                 if(servicesVisible){servicesVisible=false;return true;}
                 if(helpVisible) {helpVisible=false;return true;}
-                if(economyVisible) {economyVisible=false;return true;}
+                if(economyVisible) {if(loansPage){loansPage=false;selectedLoan=-1;}else economyVisible=false;return true;}
                 if(slotsVisible && savesReady)slotsVisible=false;
                 else openSlots();
                 return true;

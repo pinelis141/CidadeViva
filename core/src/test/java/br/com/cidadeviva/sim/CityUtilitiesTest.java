@@ -52,7 +52,7 @@ public final class CityUtilitiesTest {
         City loaded=reload(city);
         ok(loaded.powerEnabled() && loaded.economy().utilities.capacity(0)==0,"demolition and reload do not disable network requirements");
         for(int d=0;d<30;d++){city.nextDay();loaded.nextDay();ok(city.money()==loaded.money() && city.residents()==loaded.residents(),"network replay deterministic");}
-        byte[] v5=save(fixture(false));byte[] v4=Arrays.copyOf(v5,v5.length-1);v4[3]='4';crc(v4);
+        byte[] v5=save(fixture(false));byte[] v4=Arrays.copyOf(v5,v5.length-9);v4[3]='4';crc(v4);
         City old=CityPersistence.load(new ByteArrayInputStream(v4));
         ok(!old.powerEnabled() && old.residents()==24,"CVT4 migration preserves households without sudden outage");
         City failed=fixture(false);int cash=failed.money();

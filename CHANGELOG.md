@@ -1,3 +1,17 @@
+## 0.7.0-alpha3 — Empréstimos
+
+- ECON → EMPRÉSTIMO: três ofertas com juros totais fixos e confirmação explícita.
+- Parcelas diárias no orçamento, saldo devedor e pagamento parcial sem perdão da dívida.
+- CVT6 persiste obrigações e migra CVT1–CVT5.
+- Testes de contratação, cobrança, quitação, corrupção e controles.
+
+## 0.7.0-alpha2 — Balanceamento
+
+- Administração dos lotes privados deixa de crescer ao quadrado do nível.
+- Demolição devolve 50% do custo original, por toque e pincel.
+- Previsão de dias de caixa e pausa financeira preventiva.
+- Cenários de recuperação e regressões de ressarcimento, controles e CVT5.
+
 ## 0.7.0-alpha1-redes
 
 Energia e água distribuídas pelas ruas, com fontes finitas, consumo, manutenção, alertas e efeitos em empregos, serviços e evolução. Cada rede é ativada pela primeira fonte construída. Lê CVT1–CVT4 e grava CVT5; não fazer downgrade após salvar. Veja [redes e QA](REDES-0.7-ALPHA1.md).

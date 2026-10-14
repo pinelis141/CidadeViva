@@ -1,3 +1,7 @@
+> Atualização de teste: **0.7.0-alpha3-emprestimos**. Veja [ofertas, regras e validação](EMPRESTIMOS-0.7-ALPHA3.md). Grava CVT6, lê saves anteriores; não fazer downgrade após salvar.
+
+> Atualização de teste: **0.7.0-alpha2-balanceamento**. Veja [o balanceamento e as verificações](BALANCEAMENTO-0.7-ALPHA2.md).
+
 ## 0.7.0-alpha1-redes
 
 Energia e água distribuídas pelas ruas, com fontes finitas, consumo, manutenção, alertas e efeitos em empregos, serviços e evolução. Cada rede é ativada pela primeira fonte construída. Lê CVT1–CVT4 e grava CVT5; não fazer downgrade após salvar. Veja [redes e QA](REDES-0.7-ALPHA1.md).

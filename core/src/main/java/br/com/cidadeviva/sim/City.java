@@ -13,6 +13,7 @@ public final class City {
     private static final int INITIAL_MONEY = 15000;
     private final Tile[][] tiles = new Tile[WIDTH][HEIGHT];
     private int money = INITIAL_MONEY;
+    private int loanBalance,loanInstallment;
     private int day = 1;
     private int lastIncome = 0;
     private int utilityFlags=0;
@@ -132,6 +133,37 @@ public final class City {
         }
     }
 
+    public int loanBalance(){return loanBalance;}
+    public int loanInstallment(){return loanInstallment;}
+    public int loanPayment(){return Math.min(loanBalance,loanInstallment);}
+    public int loanPaymentsLeft(){return loanBalance==0?0:(loanBalance+loanInstallment-1)/loanInstallment;}
+    public boolean canBorrow(CityLoan offer){
+        return offer!=null && loanBalance==0 && money<=Integer.MAX_VALUE-offer.principal;
+    }
+    public boolean borrow(CityLoan offer){
+        if(!canBorrow(offer))return false;
+        money+=offer.principal;loanBalance=offer.total;loanInstallment=offer.payment;
+        cachedEconomy=null;
+        return true;
+    }
+    void restoreLoan(int balance,int installment){
+        if(!CityLoan.validDebt(balance,installment))throw new IllegalArgumentException("Divida invalida");
+        loanBalance=balance;loanInstallment=installment;cachedEconomy=null;
+    }
+
+    /** Reclaim half of the original public investment, never the developed building value. */
+    public int demolitionRefund(int x,int y) {
+        Tile t=tile(x,y);
+        return t==null?0:cost(t.type)/2;
+    }
+
+    public int cashRunwayDays() {
+        int net=economy().net;
+        return net>=0?Integer.MAX_VALUE:money/-net;
+    }
+
+    public boolean needsBudgetPause() {return cashRunwayDays()<=7;}
+
     /** Retorna mensagem de feedback; não modifica o mapa se a operação for inválida. */
     public String build(int x, int y, TileType type) {
         if (!inBounds(x, y)) return "Fora do mapa";
@@ -140,7 +172,8 @@ public final class City {
             if (existing.type == TileType.WATER) return "Não pode remover água";
             if (existing.type == TileType.GRASS) return "Área vazia";
             if (money < cost(type)) return "Dinheiro insuficiente";
-            money -= cost(type);
+            int refund=demolitionRefund(x,y);
+            money=(int)Math.min(Integer.MAX_VALUE,(long)money+refund);
             tiles[x][y] = new Tile(TileType.GRASS);
             cachedEconomy=null;
             return "Terreno liberado";
@@ -186,16 +219,19 @@ public final class City {
         public String feedback() {
             if (insufficientFunds) return "Saldo insuficiente: R$ "+cost;
             if (built==0) return "Nenhuma celula disponivel";
-            return built+" celulas | R$ "+cost+(ignored>0?" | "+ignored+" ignoradas":"");
+            return built+" celulas | "+(cost<0?"DEVOLUCAO R$ "+(-(long)cost):"R$ "+cost)+(ignored>0?" | "+ignored+" ignoradas":"");
         }
     }
 
     public BuildResult preview(List<BuildStroke.Cell> targets,TileType type) {
         LinkedHashSet<BuildStroke.Cell> unique=new LinkedHashSet<>(targets);
         int valid=0;
+        long estimated=0;
         for (BuildStroke.Cell cell:unique)
-            if (canBuild(cell.x,cell.y,type)) valid++;
-        long estimated=(long)valid * cost(type);
+            if (canBuild(cell.x,cell.y,type)) {
+                valid++;
+                estimated+=type==TileType.GRASS?-demolitionRefund(cell.x,cell.y):cost(type);
+            }
         return new BuildResult(valid,unique.size()-valid,(int)Math.min(Integer.MAX_VALUE,estimated),estimated>money);
     }
 
@@ -208,7 +244,7 @@ public final class City {
             if (canBuild(cell.x,cell.y,type)) tiles[cell.x][cell.y]=new Tile(type);
         }
         activateUtility(type);
-        money-=estimate.cost;
+        money=(int)Math.min(Integer.MAX_VALUE,(long)money-estimate.cost);
         cachedEconomy=null;
         return estimate;
     }
@@ -294,7 +330,11 @@ public final class City {
         }
         lastIncome = report.net;
         // Existing CVT3 saves require a non-negative treasury.
-        money = (int)Math.max(0L,Math.min(Integer.MAX_VALUE,(long)money + report.net));
+        // Apply operating cash flow first. Unpaid installments remain owed even at zero cash.
+        money = (int)Math.max(0L,Math.min(Integer.MAX_VALUE,(long)money + report.net + report.loanPayment));
+        int paid=Math.min(money,report.loanPayment);
+        money-=paid;loanBalance-=paid;
+        if(loanBalance==0)loanInstallment=0;
         // A visible city should get new buildings early without exhausting the
         // entire supply in one tick. The deterministic daily cap also prevents
         // fast-forward bursts of dozens of instant developments.
@@ -360,6 +400,7 @@ public final class City {
         restore(incoming,restoredMoney,restoredDay,restoredIncome,rates,weakDays,0);
     }
     void restore(Tile[][] incoming,int restoredMoney,int restoredDay,int restoredIncome,int[] rates,int[] weakDays,int flags) {
+        loanBalance=0;loanInstallment=0;
         utilityFlags=flags;
         for (int x=0; x<WIDTH; x++) for (int y=0; y<HEIGHT; y++)
             tiles[x][y] = incoming[x][y];

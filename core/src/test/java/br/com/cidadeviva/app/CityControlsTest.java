@@ -88,6 +88,31 @@ public final class CityControlsTest {
             load.setAccessible(true);load.invoke(game,false);
             check((float)get(game,"simClock")==0f && !(boolean)get(game,"inspectorVisible"),
                 "loading discards old partial day and tile inspector");
+            // The actual economy input route must require selection then confirmation.
+            input.keyDown(Input.Keys.E);
+            java.lang.reflect.Method economyTap=CityGame.class.getDeclaredMethod("economyTap",int.class,int.class);
+            economyTap.setAccessible(true);
+            float loanScale=(float)get(game,"uiScale");
+            java.lang.reflect.Method econY=CityGame.class.getDeclaredMethod("econY",float.class);econY.setAccessible(true);
+            float ey=(float)econY.invoke(game,loanScale);
+            int footerY=Math.round((float)get(game,"h")-ey-35*loanScale);
+            City borrowingCity=(City)get(game,"city");
+            int initialCash=borrowingCity.money();
+            economyTap.invoke(game,200,footerY);
+            check((boolean)get(game,"loansPage"),"ECON opens loan offers");
+            economyTap.invoke(game,500,footerY);
+            check(borrowingCity.money()==initialCash,"confirm without selection cannot borrow");
+            int firstOfferY=Math.round((float)get(game,"h")-ey-340*loanScale);
+            economyTap.invoke(game,365,firstOfferY);
+            check((int)get(game,"selectedLoan")==0&&borrowingCity.money()==initialCash,"selecting offer alone never contracts debt");
+            economyTap.invoke(game,500,footerY);
+            check(borrowingCity.money()==initialCash+3000&&borrowingCity.loanBalance()==3300,"confirmation contracts the selected offer exactly once");
+            check(slots.store(slots.active()).load().city.loanBalance()==3300,"contract persists immediately");
+            economyTap.invoke(game,500,footerY);
+            check(borrowingCity.money()==initialCash+3000,"duplicate tap never borrows twice");
+            input.keyDown(Input.Keys.BACK);
+            check((boolean)get(game,"economyVisible")&&!(boolean)get(game,"loansPage"),"back returns from loan offers to budget");
+            input.keyDown(Input.Keys.BACK);
         } finally {
             try(java.util.stream.Stream<java.nio.file.Path> files=java.nio.file.Files.walk(dir.toPath())) {
                 files.sorted(java.util.Comparator.reverseOrder()).forEach(path->{
@@ -111,6 +136,23 @@ public final class CityControlsTest {
         input.keyDown(Input.Keys.NUM_6);input.touchDown(365,665,0,0);input.touchUp(365,665,0,0);
         check(get(game,"selected")==br.com.cidadeviva.sim.TileType.WATER_PUMP,"water source can be selected");
         font.dispose();
+        // Real UI safeguard must stop accelerated time and explain the pause.
+        City risk=new City();
+        br.com.cidadeviva.sim.Tile[][] riskMap=new br.com.cidadeviva.sim.Tile[City.WIDTH][City.HEIGHT];
+        for(int x=0;x<City.WIDTH;x++)for(int y=0;y<City.HEIGHT;y++)
+            riskMap[x][y]=new br.com.cidadeviva.sim.Tile(br.com.cidadeviva.sim.TileType.ROAD);
+        java.lang.reflect.Method restore=City.class.getDeclaredMethod("restore",br.com.cidadeviva.sim.Tile[][].class,int.class,int.class,int.class);
+        restore.setAccessible(true);restore.invoke(risk,riskMap,100,50,0);
+        put(game,"city",risk);put(game,"simClock",100f);put(game,"simulationPaused",false);
+        java.lang.reflect.Method guard=CityGame.class.getDeclaredMethod("pauseForBudgetIfNeeded");
+        guard.setAccessible(true);
+        check((boolean)guard.invoke(game),"budget guard identifies insolvency risk");
+        check((boolean)get(game,"simulationPaused") && (float)get(game,"simClock")==0,
+            "budget guard pauses and discards accumulated fast-forward time");
+        check(risk.money()==100 && risk.day()==50,"budget guard acts before spending the remaining cash");
+        check(((String)get(game,"toast")).contains("ECON"),"budget guard explains how to review finances");
+        put(game,"city",new City());put(game,"simulationPaused",false);
+        check(!(boolean)guard.invoke(game) && !(boolean)get(game,"simulationPaused"),"solvent town continues running");
         System.out.println("OK: "+checks+" actual controls and camera/lifecycle regressions.");
     }
 }
