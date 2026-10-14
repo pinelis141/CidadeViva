@@ -1,3 +1,7 @@
+## 0.5.0-alpha2-bairros
+
+Satisfação local, poluição industrial e comércio conectado agora influenciam a evolução residencial. Reclamações no inspetor, alertas e SAT/POL em ECON. CVT3 e assinatura DEV mantidos. Serviços públicos e prédios maiores continuam pendentes. Veja [design e QA](DESIGN-BAIRROS-0.5-ALPHA2.md).
+
 ## 0.5.0 Alpha 1 — a cidade como simulação, não apenas cenário
 
 A **rede de ruas** agora determina empregos reais: moradores procuram vagas em lojas e fábricas acessíveis por um caminho contínuo de ruas, até **24 trechos viários**. Edifícios com rua ao lado mas isolados da cidade não recebem trabalhadores por teletransporte. Empregos são alocados em ordem de proximidade e disponibilidade; salário individual e famílias ainda não são modelados. Consertar uma ligação viária atualiza trabalho, arrecadação e atividade urbana.

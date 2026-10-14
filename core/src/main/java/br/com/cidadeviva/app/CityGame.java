@@ -658,8 +658,11 @@ public final class CityGame extends ApplicationAdapter {
         label(missing>0?"! "+missing+" ZONAS SEM RUA":
             eco.disconnectedResidents>0?"! "+eco.disconnectedResidents+" SEM LIGACAO AO TRABALHO":
             eco.congestedRoads>=3?"! "+eco.congestedRoads+" RUAS CONGESTIONADAS":
+            eco.neighborhoods.pollutedResidents>0?"! "+eco.neighborhoods.pollutedResidents+" SOFREM POLUICAO":
+            eco.neighborhoods.dissatisfiedResidents>0?"! "+eco.neighborhoods.dissatisfiedResidents+" INSATISFEITOS":
             nextGoal>0?"META "+nextGoal+" MORADORES":"CIDADE EM EVOLUCAO",17*u,h-178*u,0.98f,
-            missing>0?amber:good,(w-32*u)*0.48f);
+            (missing>0 || eco.disconnectedResidents>0 || eco.congestedRoads>=3 ||
+                eco.neighborhoods.pollutedResidents>0 || eco.neighborhoods.dissatisfiedResidents>0)?amber:good,(w-32*u)*0.48f);
         String labor="QUAL "+eco.qualityOfLife+" | TRAB "+eco.employed+" | DES "+eco.unemployed;
         label(labor,Math.max(w*0.53f,17*u),h-178*u,0.96f,white,w*0.46f-15*u);
         for(int i=0;i<HudLayout.ACTIONS;i++) {
@@ -737,9 +740,10 @@ public final class CityGame extends ApplicationAdapter {
         if(t.type.isZone()) {
             label("RUA: "+(city.hasRoad(hoverX,hoverY)?"SIM":"NAO")+
                 "  |  DEMANDA "+report.demand(t.type)+
-                "  |  IMPOSTO "+city.taxRate(t.type)+"%",21*u,
+                "  |  "+(t.type==TileType.RESIDENTIAL?"SAT "+report.neighborhoods.satisfactionAt(hoverX,hoverY)+
+                    " POL "+report.neighborhoods.pollutionAt(hoverX,hoverY):"IMPOSTO "+city.taxRate(t.type)+"%"),21*u,
                 base+45*u,1.04f,muted,w-88*u);
-            String reason=report.mainConstraint(t.type,city.hasRoad(hoverX,hoverY));
+            String reason=report.neighborhoods.complaintAt(city,report.mobility,hoverX,hoverY);
             int low=city.lowDemandDays(t.type);
             if(low>0)reason+="  |  "+low+" DIAS FRACOS";
             label(reason,21*u,base+19*u,0.96f,
@@ -796,7 +800,9 @@ public final class CityGame extends ApplicationAdapter {
         label("Taxas de 5% a 20%: excesso reduz arrecadacao",
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
         label("QUAL "+report.qualityOfLife+" | EMP "+report.employed+"/"+report.population+
-            " | VIAGEM "+report.commuteSteps+" | TRANS "+report.congestedRoads,x+21*u,y+465*u,0.95f,sub,ww-42*u);
+            " | SAT "+report.neighborhoods.averageSatisfaction+" | POL "+report.neighborhoods.pollutedResidents,x+21*u,y+465*u,0.95f,sub,ww-42*u);
+        label("VIAGEM "+report.commuteSteps+" | RUAS CONGESTIONADAS "+report.congestedRoads,
+            x+21*u,y+444*u,0.95f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
             int demand=report.demand(TAX_TYPES[i]);

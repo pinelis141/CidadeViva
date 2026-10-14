@@ -24,6 +24,7 @@ public final class CityMobility {
     /** Road tiles with sustained equivalent daily traffic above capacity. */
     public final int congestedRoads;
     private final int[] roadTraffic;
+    private final int[] homeEmployment, workplaceWorkers;
 
     private static final class Building {
         final int x,y,id,capacity;
@@ -39,7 +40,7 @@ public final class CityMobility {
         Offer(int job,int distance,int road) {this.job=job;this.distance=distance;this.road=road;}
     }
     private CityMobility(int employed,int commerce,int industry,int accessible,int reachable,
-                         int jobCapacity,int reachableCapacity,long weightedDistance,int[] roads) {
+                         int jobCapacity,int reachableCapacity,long weightedDistance,int[] roads,int[] homeEmployment,int[] workplaceWorkers) {
         this.employed=employed;
         this.commercialWorkers=commerce;
         this.industrialWorkers=industry;
@@ -50,11 +51,14 @@ public final class CityMobility {
         this.reachableJobCapacity=reachableCapacity;
         this.averageCommuteSteps=employed==0?0:(int)Math.round((double)weightedDistance/employed);
         this.roadTraffic=roads;
+        this.homeEmployment=homeEmployment;this.workplaceWorkers=workplaceWorkers;
         int jammed=0;
         for(int flow:roads)if(flow>=80)jammed++;
         this.congestedRoads=jammed;
     }
     public int trafficAt(int x,int y) { return x<0||y<0||x>=W||y>=H?0:roadTraffic[x*H+y]; }
+    public int employedAt(int x,int y) {return homeEmployment[x*H+y];}
+    public int workersAt(int x,int y) {return workplaceWorkers[x*H+y];}
     private static int nearRoads(City city,int x,int y,int[] out) {
         int n=0;
         for(int d=0;d<4;d++) {
@@ -81,7 +85,7 @@ public final class CityMobility {
             }
         }
         int employed=0,commerce=0,industry=0,reachable=0;
-        int[] flows=new int[N];
+        int[] flows=new int[N],homeEmployment=new int[N],workplaceWorkers=new int[N];
         long commuteSum=0;
         boolean[] reachableJobs=new boolean[jobs.size()];
         // Reuse bounded arrays, avoiding per-home allocations of 2304 nodes.
@@ -136,6 +140,7 @@ public final class CityMobility {
                 if(job.remaining==0)continue;
                 int workers=Math.min(available,job.remaining);
                 available-=workers;job.remaining-=workers;employed+=workers;
+                homeEmployment[home.id]+=workers;workplaceWorkers[job.id]+=workers;
                 if(job.type==TileType.COMMERCIAL)commerce+=workers;else industry+=workers;
                 commuteSum+=(long)workers*(offer.distance+2);
                 // Count actual commute paths for traffic visualization and metrics.
@@ -146,6 +151,6 @@ public final class CityMobility {
         int reachableCapacity=0;
         for(int j=0;j<jobs.size();j++)if(reachableJobs[j])reachableCapacity+=jobs.get(j).capacity;
         return new CityMobility(employed,commerce,industry,accessible,reachable,
-            jobCapacity,reachableCapacity,commuteSum,flows);
+            jobCapacity,reachableCapacity,commuteSum,flows,homeEmployment,workplaceWorkers);
     }
 }
