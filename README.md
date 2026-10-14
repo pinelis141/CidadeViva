@@ -1,3 +1,7 @@
+## 0.6.0-alpha1-servicos
+
+Parques, escolas e postos de saúde com capacidade, atendimento por ruas, manutenção e efeito na satisfação/evolução residencial. Menu SERV. e desenhos próprios no tabuleiro. Lê saves antigos e grava CVT4: não fazer downgrade após salvar. Veja [serviços e QA](SERVICOS-0.6-ALPHA1.md).
+
 ## 0.5 Alpha 3 — auditoria e correções
 
 Câmera preservada ao girar, controles protegidos contra interrupção/cliques acidentais, recuperação de saves temporários e feedback correto de deterioração. Atualização DEV compatível com CVT3 e três cidades. Veja [relatório e QA](AUDITORIA-0.5-ALPHA3.md).

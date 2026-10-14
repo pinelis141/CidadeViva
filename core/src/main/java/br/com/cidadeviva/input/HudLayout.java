@@ -3,7 +3,7 @@ package br.com.cidadeviva.input;
 /** UI geometry in top-left screen coordinates; pure Java for deterministic touch tests. */
 public final class HudLayout {
     public static final int ACTIONS = 6;
-    public static final int TOOLS = 5;
+    public static final int TOOLS = 6;
     public static final float TOP_HEIGHT = 249f;
     public static final float BOTTOM_HEIGHT = 134f;
     public static final float ACTION_TOP = 195f;

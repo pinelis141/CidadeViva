@@ -1,6 +1,8 @@
 package br.com.cidadeviva.app;
 
 import br.com.cidadeviva.sim.City;
+import br.com.cidadeviva.sim.CityServices;
+import br.com.cidadeviva.render.ServiceArt;
 import br.com.cidadeviva.sim.CityPersistence;
 import br.com.cidadeviva.sim.CityEconomy;
 import br.com.cidadeviva.sim.CityActivity;
@@ -42,12 +44,12 @@ public final class CityGame extends ApplicationAdapter {
     private static final String SAVE_PATH = "cidade-viva/salvamento.cvt";
     private final TileType[] tools = {
         TileType.ROAD, TileType.RESIDENTIAL, TileType.COMMERCIAL,
-        TileType.INDUSTRIAL, TileType.GRASS
+        TileType.INDUSTRIAL, TileType.GRASS, TileType.PARK
     };
-    private final String[] toolNames = { "RUA", "CASAS", "LOJAS", "IND.", "APAGAR" };
+    private final String[] toolNames = { "RUA", "CASAS", "LOJAS", "IND.", "APAGAR", "SERV." };
     private final Color[] toolColors = {
         rgb(64, 76, 88), rgb(83, 174, 108), rgb(89, 164, 218),
-        rgb(227, 165, 82), rgb(210, 84, 84)
+        rgb(227, 165, 82), rgb(210, 84, 84), rgb(126,205,171)
     };
 
     private City city;
@@ -55,6 +57,8 @@ public final class CityGame extends ApplicationAdapter {
     private ShapeRenderer shapes;
     private SpriteBatch batch;
     private PixelArtAtlas pixelArt;
+    private ServiceArt serviceArt;
+    private boolean servicesVisible=false;
     private BitmapFont font;
     private GlyphLayout glyph;
     private Matrix4 uiProjection;
@@ -133,6 +137,7 @@ public final class CityGame extends ApplicationAdapter {
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
         pixelArt = new PixelArtAtlas();
+        serviceArt=new ServiceArt();
         font = new BitmapFont();
         glyph = new GlyphLayout();
         uiProjection = new Matrix4();
@@ -175,7 +180,7 @@ public final class CityGame extends ApplicationAdapter {
         float delta = Math.min(Gdx.graphics.getDeltaTime(),0.1f);
         toastClock -= delta;
         milestoneClock=Math.max(0f,milestoneClock-delta);
-        if (!simulationPaused && savesReady && !slotsVisible && !economyVisible && !helpVisible) {
+        if (!simulationPaused && savesReady && !slotsVisible && !economyVisible && !servicesVisible && !helpVisible) {
             activityClock += delta;
             growthNoticeCooldown=Math.max(0f,growthNoticeCooldown-delta);
             for(int i=growthPulses.size()-1;i>=0;i--) {
@@ -243,6 +248,7 @@ public final class CityGame extends ApplicationAdapter {
                 Tile t=city.tile(x,y);
                 int id=PixelArtAtlas.tileSprite(t.type,city.roadMask(x,y),city.waterMask(x,y),x,y);
                 pixelArt.draw(batch,id,sx,sy);
+                if(t.type.isService())serviceArt.draw(batch,t.type,sx,sy);
                 if (t.type==TileType.FOREST) pixelArt.draw(batch,PixelArtAtlas.treeSprite(x,y),sx,sy);
                 if (t.type.isZone() && t.level>0)
                     pixelArt.draw(batch,PixelArtAtlas.buildingSprite(t.type,t.level,x,y),sx,sy);
@@ -607,14 +613,14 @@ public final class CityGame extends ApplicationAdapter {
         float tw=w/HudLayout.TOOLS;
         for(int i=0;i<HudLayout.TOOLS;i++) {
             float bx=i*tw+4*u,bw=tw-8*u;
-            boolean active=selected==tools[i];
+            boolean active=selected==tools[i] || (i==5 && selected.isService());
             card(bx,14*u,bw,(HudLayout.BOTTOM_HEIGHT-25)*u,
                 active?rgb(244,211,122):toolColors[i],active);
             drawToolIcon(i,bx+bw*0.5f,77*u,1.18f*u);
         }
         // Tile inspector floating over map, with its own hit-test area.
         if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
-           !slotsVisible && !economyVisible) {
+           !slotsVisible && !economyVisible && !servicesVisible) {
             float iy=(HudLayout.BOTTOM_HEIGHT+6)*u;
             shapes.setColor(0.045f,0.10f,0.13f,0.94f);
             shapes.rect(8*u,iy,w-16*u,HudLayout.INSPECTOR_HEIGHT*u);
@@ -623,17 +629,18 @@ public final class CityGame extends ApplicationAdapter {
             card(w-59*u,iy+42*u,44*u,36*u,cyan,false);
         }
         if(milestoneClock>0 && milestoneBanner!=null &&
-            !helpVisible && !slotsVisible && !economyVisible)drawMilestoneShape(u);
+            !helpVisible && !slotsVisible && !economyVisible && !servicesVisible)drawMilestoneShape(u);
         if(helpVisible) {
             shapes.setColor(0.01f,0.02f,0.03f,0.88f);shapes.rect(0,0,w,h);
             card(15*u,h*0.5f-135*u,w-30*u,270*u,cyan,false);
         }
         if(slotsVisible)drawSlotsOverlay(u);
         if(economyVisible)drawEconomyOverlay(u,eco);
+        if(servicesVisible)drawServices(u,false);
         shapes.end();
         batch.setProjectionMatrix(uiProjection);
         batch.begin();
-        if(!helpVisible && !slotsVisible && !economyVisible) {
+        if(!helpVisible && !slotsVisible && !economyVisible && !servicesVisible) {
         drawGrowthLabels(u);
         label("CIDADE VIVA",13*u,h-20*u,1.42f,white,
             Math.max(45,w-372*u));
@@ -680,17 +687,17 @@ public final class CityGame extends ApplicationAdapter {
         }
         for(int i=0;i<HudLayout.TOOLS;i++) {
             float x=i*tw;
-            centered(toolNames[i],x,tw,46*u,1.30f,white);
-            centered("R$ "+city.cost(tools[i]),x,tw,26*u,0.96f,muted);
+            centered(i==5 && selected.isService()?(selected==TileType.CLINIC?"SAUDE":CityServices.name(selected)):toolNames[i],x,tw,46*u,1.30f,white);
+            centered("R$ "+city.cost(i==5 && selected.isService()?selected:tools[i]),x,tw,26*u,0.96f,muted);
         }
         if(inspectorVisible && city.inBounds(hoverX,hoverY) && !helpVisible &&
-            !slotsVisible && !economyVisible)drawInspector(u,eco);
+            !slotsVisible && !economyVisible && !servicesVisible)drawInspector(u,eco);
         if(milestoneClock>0 && milestoneBanner!=null &&
-            !helpVisible && !slotsVisible && !economyVisible)drawMilestoneText(u);
+            !helpVisible && !slotsVisible && !economyVisible && !servicesVisible)drawMilestoneText(u);
         float toastY=(HudLayout.BOTTOM_HEIGHT+18)*u;
         if(inspectorVisible && city.inBounds(hoverX,hoverY))
             toastY+=(HudLayout.INSPECTOR_HEIGHT+8)*u;
-        if(!helpVisible && !slotsVisible && !economyVisible && toastClock>0) {
+        if(!helpVisible && !slotsVisible && !economyVisible && !servicesVisible && toastClock>0) {
             label(toast,13*u,toastY,1.12f,rgb(246,234,171),w-30*u);
         }
         if(!helpVisible && paintMode && brushGesture && !brushCells.isEmpty()) {
@@ -703,6 +710,7 @@ public final class CityGame extends ApplicationAdapter {
         if(helpVisible)drawHelpText(u);
         if(slotsVisible)drawSlotsText(u);
         if(economyVisible)drawEconomyText(u,eco);
+        if(servicesVisible)drawServices(u,true);
         batch.end();
         Gdx.gl.glDisable(GL20.GL_BLEND);
     }
@@ -738,6 +746,7 @@ public final class CityGame extends ApplicationAdapter {
         String type=t.type==TileType.RESIDENTIAL?"RESIDENCIAL":
             t.type==TileType.COMMERCIAL?"COMERCIAL":
             t.type==TileType.INDUSTRIAL?"INDUSTRIAL":
+            t.type.isService()?CityServices.name(t.type):
             t.type==TileType.ROAD?"ESTRADA":
             t.type==TileType.WATER?"AGUA":
             t.type==TileType.FOREST?"FLORESTA":"TERRENO LIVRE";
@@ -754,6 +763,10 @@ public final class CityGame extends ApplicationAdapter {
             if(low>0)reason+="  |  "+low+" DIAS FRACOS";
             label(reason,21*u,base+19*u,0.96f,
                 !city.hasRoad(hoverX,hoverY)?rgb(243,178,108):white,w-48*u);
+        } else if(t.type.isService()) {
+            label("R$ "+CityServices.upkeep(t.type)+"/dia | CAP "+CityServices.capacity(t.type)+" | ALCANCE "+CityServices.range(t.type),
+                21*u,base+45*u,1.04f,muted,w-88*u);
+            label(!city.hasRoad(hoverX,hoverY)?"SEM RUA: SERVICO INATIVO":city.money()==0?"SEM CAIXA: SERVICO INATIVO":"EM OPERACAO | ATENDE POR RUAS",21*u,base+19*u,0.96f,white,w-48*u);
         } else label("POSICAO "+hoverX+","+hoverY+"  |  TOQUE EM X PARA FECHAR",
             21*u,base+30*u,1.06f,muted,w-90*u);
         centered("X",w-59*u,44*u,base+54*u,1.25f,white);
@@ -807,7 +820,7 @@ public final class CityGame extends ApplicationAdapter {
             x+21*u,y+487*u,1.04f,sub,ww-42*u);
         label("QUAL "+report.qualityOfLife+" | EMP "+report.employed+"/"+report.population+
             " | SAT "+report.neighborhoods.averageSatisfaction+" | POL "+report.neighborhoods.pollutedResidents,x+21*u,y+465*u,0.95f,sub,ww-42*u);
-        label("VIAGEM "+report.commuteSteps+" | RUAS CONGESTIONADAS "+report.congestedRoads,
+        label("ATENDIDOS: LAZER "+report.services.served(TileType.PARK)+" | ESCOLA "+report.services.served(TileType.SCHOOL)+" | SAUDE "+report.services.served(TileType.CLINIC),
             x+21*u,y+444*u,0.95f,sub,ww-42*u);
         for(int i=0;i<3;i++) {
             float cy=y+(356-i*83)*u;
@@ -829,7 +842,7 @@ public final class CityGame extends ApplicationAdapter {
         label("DESPESAS",x+22*u,y+118*u,1.12f,rgb(244,183,113),ww-44*u);
         label("R$ "+report.expenses+" / dia",x+ww*0.63f,y+118*u,
             1.18f,white,ww*0.34f);
-        label("Ruas "+report.roadMaintenance+" | Zonas/Predios "+report.zoneMaintenance,
+        label("Ruas "+report.roadMaintenance+" | Predios "+report.zoneMaintenance+" | Servicos "+report.serviceMaintenance,
             x+22*u,y+97*u,0.94f,sub,ww-44*u);
         label("SALDO DIARIO",x+22*u,y+70*u,1.04f,white,ww*0.49f);
         label((report.net>=0?"+":"")+"R$ "+report.net,x+ww*0.55f,y+70*u,1.22f,
@@ -866,7 +879,7 @@ public final class CityGame extends ApplicationAdapter {
         for(int i=0;i<CitySlots.COUNT;i++)slotInfo[i]=saves.inspect(i+1);
     }
     private void openSlots() {
-        resetGestures();
+        resetGestures();servicesVisible=false;helpVisible=false;
         economyVisible=false;
         inspectorVisible=false;
         if (!savesReady) simulationPaused=true;
@@ -973,6 +986,37 @@ public final class CityGame extends ApplicationAdapter {
         }
     }
 
+    private void openServices() {
+        resetGestures();servicesVisible=true;helpVisible=false;slotsVisible=false;economyVisible=false;inspectorVisible=false;
+    }
+    private void drawServices(float u,boolean text) {
+        float x=slotsX(u),y=h/2f-200*u,ww=slotsW(u);
+        if(!text) {
+            shapes.setColor(0.01f,0.03f,0.04f,0.91f);shapes.rect(0,0,w,h);
+            card(x,y,ww,400*u,rgb(126,205,171),false);
+            for(int i=0;i<3;i++)card(x+12*u,y+(240-i*90)*u,ww-24*u,72*u,rgb(126,205,171),false);
+            card(x+12*u,y+12*u,ww-24*u,36*u,rgb(180,190,190),false);
+        } else {
+            label("SERVICOS PUBLICOS",x+22*u,y+365*u,1.45f,rgb(232,243,237),ww-44*u);
+            label("Escolha e toque no mapa. Atendimento exige ruas.",x+22*u,y+337*u,0.96f,rgb(170,195,197),ww-44*u);
+            for(int i=0;i<3;i++) {
+                TileType type=CityServices.TYPES[i];float row=y+(240-i*90)*u;
+                label(CityServices.name(type)+"  R$ "+city.cost(type),x+26*u,row+51*u,1.2f,rgb(232,243,237),ww-52*u);
+                label("R$ "+CityServices.upkeep(type)+"/dia | "+CityServices.capacity(type)+" moradores | "+CityServices.range(type)+" ruas",x+26*u,row+24*u,0.98f,rgb(170,195,197),ww-52*u);
+            }
+            centered("VOLTAR",x+12*u,ww-24*u,y+37*u,1.08f,rgb(232,243,237));
+        }
+    }
+    private void servicesTap(int sx,int sy) {
+        float u=uiScale,x=slotsX(u),y=h/2f-200*u,ww=slotsW(u),py=h-sy;
+        if(sx<x || sx>x+ww || py<y || py>y+400*u){servicesVisible=false;return;}
+        if(py<y+48*u){servicesVisible=false;return;}
+        for(int i=0;i<3;i++)if(py>=y+(240-i*90)*u && py<=y+(312-i*90)*u) {
+            selected=CityServices.TYPES[i];servicesVisible=false;paintMode=false;
+            message("Construir "+CityServices.name(selected)+": R$ "+city.cost(selected));return;
+        }
+    }
+
     private void message(String text) { toast=text;toastClock=3f; }
 
     private void save(boolean feedback) {
@@ -1013,7 +1057,7 @@ public final class CityGame extends ApplicationAdapter {
 
     @Override public void dispose() {
         if(savesReady)save(false);
-        shapes.dispose();batch.dispose();font.dispose();pixelArt.dispose();
+        shapes.dispose();batch.dispose();font.dispose();pixelArt.dispose();serviceArt.dispose();
     }
 
     private void clampCamera() {
@@ -1138,7 +1182,7 @@ public final class CityGame extends ApplicationAdapter {
 
     private void openEconomy() {
         resetGestures();
-        helpVisible=false;slotsVisible=false;inspectorVisible=false;economyVisible=true;
+        helpVisible=false;slotsVisible=false;servicesVisible=false;inspectorVisible=false;economyVisible=true;
     }
 
     private void activateAction(int index) {
@@ -1167,7 +1211,7 @@ public final class CityGame extends ApplicationAdapter {
     private final class Controls extends InputAdapter {
         @Override public boolean touchDown(int screenX,int screenY,int pointer,int button) {
             if(!savesReady && !slotsVisible)openSlots();
-            if (slotsVisible || economyVisible) {
+            if (slotsVisible || economyVisible || servicesVisible) {
                 if(pointer==0) { resetGestures();down[0]=true;px[0]=screenX;py[0]=screenY; }
                 else suppressTap=true;
                 return true;
@@ -1215,7 +1259,7 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchDragged(int screenX,int screenY,int pointer) {
-            if (slotsVisible || economyVisible) {
+            if (slotsVisible || economyVisible || servicesVisible) {
                 if(pointer==0 && down[0]) {
                     dragTravel+=Math.abs(screenX-px[0])+Math.abs(screenY-py[0]);
                     px[0]=screenX;py[0]=screenY;
@@ -1254,11 +1298,12 @@ public final class CityGame extends ApplicationAdapter {
             return true;
         }
         @Override public boolean touchUp(int screenX,int screenY,int pointer,int button) {
-            if(slotsVisible || economyVisible) {
+            if(slotsVisible || economyVisible || servicesVisible) {
                 if(pointer==0 && down[0]) {
                     down[0]=false;
                     if(!moving && !suppressTap && Math.abs(screenX-px[0])+Math.abs(screenY-py[0])<18*uiScale) {
-                        if(slotsVisible)slotsTap(screenX,screenY);
+                        if(servicesVisible)servicesTap(screenX,screenY);
+                        else if(slotsVisible)slotsTap(screenX,screenY);
                         else economyTap(screenX,screenY);
                     }
                 }
@@ -1282,6 +1327,7 @@ public final class CityGame extends ApplicationAdapter {
                         else if(quick==1) openSlots();
                         else recenter();
                     } else if (action>=0 && action==pendingAction) activateAction(action);
+                    else if (tool==5 && tool==pendingTool)openServices();
                     else if (tool>=0 && tool==pendingTool) {
                         selected=tools[tool];
                         hoverX=-1;hoverY=-1;
@@ -1311,7 +1357,7 @@ public final class CityGame extends ApplicationAdapter {
             resetGestures();return true;
         }
         @Override public boolean scrolled(float amountX,float amountY) {
-            if(slotsVisible || economyVisible || helpVisible)return true;
+            if(slotsVisible || economyVisible || servicesVisible || helpVisible)return true;
             float sx=Gdx.input.getX(),sy=Gdx.input.getY();
             zoomAround(1f+amountY*0.12f,sx,sy,sx,sy);
             return true;
@@ -1319,14 +1365,16 @@ public final class CityGame extends ApplicationAdapter {
         @Override public boolean keyDown(int keycode) {
             if(keycode==Input.Keys.ESCAPE || keycode==Input.Keys.BACK) {
                 resetGestures();
+                if(servicesVisible){servicesVisible=false;return true;}
                 if(helpVisible) {helpVisible=false;return true;}
                 if(economyVisible) {economyVisible=false;return true;}
                 if(slotsVisible && savesReady)slotsVisible=false;
                 else openSlots();
                 return true;
             }
-            if(slotsVisible || economyVisible || helpVisible || !savesReady)return true;
+            if(slotsVisible || economyVisible || servicesVisible || helpVisible || !savesReady)return true;
             if(keycode==Input.Keys.E) {openEconomy();return true;}
+            if(keycode==Input.Keys.NUM_6){openServices();return true;}
             if(keycode==Input.Keys.S)save(true);
             if(keycode==Input.Keys.L)load(true);
             if(keycode==Input.Keys.SPACE)activateAction(0);
